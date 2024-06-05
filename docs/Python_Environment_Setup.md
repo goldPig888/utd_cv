@@ -5,10 +5,10 @@
 Install miniconda following instruction from the [official website](https://docs.conda.io/en/latest/miniconda.html).
 
 
-## Create a new environment of Python 3.9
+## Create a new environment of Python 3.10
 
 ```bash
-conda create -n summer_camp python=3.9
+conda create -n summer_camp python=3.10
 ```
 
 ## Activate the environment
