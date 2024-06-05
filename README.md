@@ -29,9 +29,24 @@ Follow steps in the [Python Environment Setup](./docs/Python_Environment_Setup.m
 
 ### Practices
 - [Pythion Basics](./notebooks/01_Python_Basics.ipynb)
+
   Try to understand basics in Python, such as list, tuple, set, dictionary, class, function, loop, etc.
 - [Numpy Basics](./notebooks/02_Python_Numpy.ipynb)
-- [CV Basics](./notebooks/03_Python_CV.ipynb)
+
+  Try to understand basics in Numpy, such as array, matrix, operation, etc.
+- [CV Basics]
+  - [Deprojection](./notebooks/03-1_CV_Deprojection.ipynb)
+
+    Try to understand the deprojection of 2D image points to 3D world points.
+
+  - [Triangulation](./notebooks/03-2_CV_Triangulation.ipynb)
+
+    Try to understand the triangulation of 2D image points to 3D world points.
+
+- RANSAC Algorithm
+  - [RANSAC](./notebooks/04_RANSAC_Algorithm.ipynb)
+
+    Try to understand the RANSAC algorithm and implement it.
 
 ## Reading List
 
