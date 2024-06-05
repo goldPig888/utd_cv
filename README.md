@@ -34,7 +34,7 @@ Follow steps in the [Python Environment Setup](./docs/Python_Environment_Setup.m
 - [Numpy Basics](./notebooks/02_Python_Numpy.ipynb)
 
   Try to understand basics in Numpy, such as array, matrix, operation, etc.
-- [CV Basics]
+- CV Basics
   - [Deprojection](./notebooks/03-1_CV_Deprojection.ipynb)
 
     Try to understand the deprojection of 2D image points to 3D world points.
