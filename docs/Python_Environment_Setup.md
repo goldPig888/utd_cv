@@ -19,9 +19,20 @@ conda activate summer_camp
 
 ## Install required packages
 
-```bash
-pip install --no-cache-dir -r requirements.txt
-```
+  - Install packages from the `requirements.txt` file
+
+    This file contains basic packages that are required for the project.
+
+    ```bash
+    pip install --no-cache-dir -r requirements.txt
+    ```
+  - Install packages from the `requirements_others.txt` file
+    
+    This file contains packages that are related to Manopth, SAM and Pytorch.
+
+    ```bash
+    pip install --no-cache-dir -f requirements_others.txt
+    ```
 
 ## Deactivate the environment
 
