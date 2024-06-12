@@ -105,10 +105,36 @@ Follow steps in the [Python Environment Setup](./docs/Python_Environment_Setup.m
   - [Segment Anything](./docs/papers/SegmentAnything.pdf)
 - Camera Calibration for the latest Canera Extrinsics
   ![camera_calibration](./docs/resources/camera_calibration_vicalib.gif)
+- Hand Calibration for each team members.
 - Record data with ROS
   - Select the Objects
   - Design the tasks (e.g., pick and place, handover, etc.)
 - Extract the images from the rosbag recordings
+- **Homeworks**
+  - HW1: Rosbag_Extraction
+    - Try to write the class `RosbagExtractor` 
+      - to extract the images from the rosbag recordings for all the camera image topics.
+      - the extracted images should be saved in the `./data/recordings` folder following below structure
+        ```
+        20231022_193630           # the rosbag name
+        ├── 037522251142          # the camera serial number
+        │   ├── color_000000.jpg  # the color image color_xxxxxx.jpg
+        │   └── depth_000000.png  # the depth image depth_xxxxxx.png
+        │   └── ...  
+        ├── 043422252387
+        │   ├── color_000000.jpg
+        │   ├── depth_000000.png
+        │   ├── ...
+        ├── ...
+        ├── 117222250549
+        │   ├── color_000000.jpg
+        │   ├── depth_000000.png
+        │   ├── ...
+        ```
+    - The demo rosbag file could be downloaded [here](https://utdallas.box.com/s/uaraafw1mmuofc017vjejxtzdprpvhmv).
+    - If you plan to run the ROS locally, you could follow the [ROS Environment Setup](./docs/ROS_Environment_Setup.md) document to setup the ROS environment with conda. Then you could run the `roscore` to start the ROS master, and debug your code under the ROS environment.
+    - References:
+      - [Export image from rosbag](https://gist.github.com/zxf8665905/2d09d25da823b0f7390cab83c64d631a)
 
 ### Week 3
 
