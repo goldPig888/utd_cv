@@ -130,7 +130,7 @@ class HandPoseOptimizer:
         optimizer = torch.optim.Adam([optim_pose], lr=0.001)
 
         loss_history = []
-        total_steps = 20000
+        total_steps = 10000
 
         for step in range(total_steps):
             optimizer.zero_grad()
