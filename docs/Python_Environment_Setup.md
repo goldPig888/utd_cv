@@ -24,11 +24,17 @@ conda activate summer_camp
     This file contains basic packages that are required for the project.
 
     ```bash
+    # For Windows or Linux
     pip install --no-cache-dir -r requirements.txt
+
+    # For MacOS
+    pip install --no-cache-dir -r requirements_mac.txt
     ```
-  - Install packages from the `requirements_others.txt` file
+
+
+  - ~~Install packages from the `requirements_others.txt` file~~
     
-    This file contains packages that are related to Manopth, SAM and Pytorch.
+    ~~This file contains packages that are related to Manopth, SAM and Pytorch.~~
 
     ```bash
     pip install --no-cache-dir -f requirements_others.txt
