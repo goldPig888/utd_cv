@@ -18,8 +18,8 @@ tqdm==4.66.4
 
 # CV Libraries
 imageio==2.34.1
-opencv-python==4.9.0.80
-opencv-contrib-python==4.9.0.80
+# opencv-python==4.9.0.80
+# opencv-contrib-python==4.9.0.80
 plotly==5.22.0
 open3d==0.18.0
 

@@ -14,12 +14,10 @@ conda install mamba -c conda-forge
 
 # Install ROS1 into the environment
 
-Because the ROS1 only supports Python 3.9, we need to create a new conda environment with Python 3.9.
-
-- Create a new conda environment with Python 3.9
+- Create a new ROS conda environment with Python 3.11
 
 ```bash
-mamba create -n ros python=3.9
+conda create -n ros python=3.11
 ```
 
 - Activate the new environment
@@ -47,11 +45,17 @@ mamba install ros-noetic-desktop
 - Reactivate the environment to initialize the ros env
 
 ```bash
-mamba deactivate
-mamba activate ros
+conda deactivate
+conda activate ros
 ```
 
-- Testing installation
+## Install Python packages
+
+```bash
+python -m pip install --no-cache-dir -r requirements_ros_conda.txt
+```
+
+## Testing ROS Installation
 
 After installation you are able to run rviz and other ros tools.
 
