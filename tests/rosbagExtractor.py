@@ -6,25 +6,32 @@ from cv_bridge import CvBridge, CvBridgeError
 import os
 import cv2
 import numpy as np
+import json
 
 class RosbagExtractor:
-    def __init__(self, directory, debug=False) -> None:
+    def __init__(self, directory, name, debug=False) -> None:
         rospy.init_node('extract_rosbag', anonymous=True)
         self.bag_files = self._get_files(directory)
         self.directory = directory
+        self.name = name
         self._process_bags()
+
 
     def _get_files(self, directory):
         return [f for f in os.listdir(directory) if f.endswith('.bag')]
 
+
     def _read_bag_topic_list(self, bag_file):
+
         bag_path = os.path.join(self.directory, bag_file)
         bag = rosbag.Bag(bag_path, 'r')
+
         topic_list = set()
         for topic, _, _ in bag.read_messages():
             topic_list.add(topic)
         bag.close()
         return list(topic_list)
+
 
     def _get_camera_topics(self, topics):
         cameras = {}
@@ -39,6 +46,7 @@ class RosbagExtractor:
                 elif '/aligned_depth_to_color/image_raw' in topic:
                     cameras[camera_id]['depth'] = topic
         return cameras
+
 
     def _save_image(self, bridge, msg, filename, is_color=True):
         try:
@@ -57,7 +65,8 @@ class RosbagExtractor:
         except Exception as e:
             print(f"Unexpected error: {e}")
 
-    def _process_camera(self, bag_file, output_dir, color_topic, depth_topic):
+
+    def _process_camera(self, bag_file, output_dir, color_topic, depth_topic, metadata):
         bag_path = os.path.join(self.directory, bag_file)
         bag = rosbag.Bag(bag_path, 'r')
         bridge = CvBridge()
@@ -70,15 +79,17 @@ class RosbagExtractor:
 
         color_count = 0
         depth_count = 0
+        num_frames = 0
 
         def callback(color_msg, depth_msg):
-            nonlocal color_count, depth_count
+            nonlocal color_count, depth_count, num_frames
             color_filename = os.path.join(output_dir, "color_%06i.jpg" % color_count)
             depth_filename = os.path.join(output_dir, "depth_%06i.png" % depth_count)
             self._save_image(bridge, color_msg, color_filename, is_color=True)
             self._save_image(bridge, depth_msg, depth_filename, is_color=False)
             color_count += 1
             depth_count += 1
+            num_frames += 1
 
         ts.registerCallback(callback)
 
@@ -89,6 +100,8 @@ class RosbagExtractor:
                 depth_filter.signalMessage(msg)
 
         bag.close()
+        metadata['num_frames'] = num_frames
+
 
     def _process_bags(self):
         for bag_file in self.bag_files:
@@ -106,14 +119,35 @@ class RosbagExtractor:
                 if 'color' in topics and 'depth' in topics:
                     output_dir = os.path.join(master_output_dir, camera_id)
                     print(f"Processing camera: {camera_id}")
-                    self._process_camera(bag_file, output_dir, topics['color'], topics['depth'])
+
+                    metadata = {
+                        "serials": list(cameras.keys()),
+                        "width": 640,
+                        "height": 480,
+                        "extrinsics": "extrinsics_20240611",
+                        "mano_calib": self.name,
+                        "object_ids": ["G01_1", "G01_2", "G01_3"],
+                        "mano_sides": ["right", "left"],
+                        "num_frames": 0
+                    }
+
+                    self._process_camera(bag_file, output_dir, topics['color'], topics['depth'], metadata)
+                    self._generate_metadata(metadata, master_output_dir)
                 else:
                     print(f"Camera {camera_id} does not have both color and depth topics.")
 
+
+    def _generate_metadata(self, metadata, output_dir):
+        meta_file = os.path.join(output_dir, "meta.json")
+        with open(meta_file, 'w') as f:
+            json.dump(metadata, f, indent=4)
+        print(f"Metadata written to {meta_file}")
+
+
 def main():
-    RosbagExtractor("/home/jikaiwang/GitHub/summer_camp/data/rosbags/may/20240612")
-    RosbagExtractor("/home/jikaiwang/GitHub/summer_camp/data/rosbags/lyndon/20240612")
-    RosbagExtractor("/home/jikaiwang/GitHub/summer_camp/data/rosbags/nicole/20240612")
+    RosbagExtractor("/home/jikaiwang/GitHub/summer_camp/data/rosbags/may/20240612", "may")
+    RosbagExtractor("/home/jikaiwang/GitHub/summer_camp/data/rosbags/lyndon/20240612", "lyndon")
+    RosbagExtractor("/home/jikaiwang/GitHub/summer_camp/data/rosbags/nicole/20240612", "nicole")
     print("done")
 
 if __name__ == '__main__':
