@@ -1,8 +1,13 @@
+import os
+
+os.environ["OPEN3D_DISABLE_WEB_VISUALIZER"] = "true"
+
 from pathlib import Path
 import json
 import cv2
 import numpy as np
 import open3d as o3d
+
 from scipy.spatial.transform import Rotation as R
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg

@@ -15,7 +15,7 @@ CAMERA_IDS = (
 def extract_merged_points():
     # load extrinsics
     RTs, master_cam = read_extrinsics_from_json(
-        PROJ_ROOT / f"data/calibration/extrinsics/extrinsics_20231014/extrinsics.json"
+        PROJ_ROOT / f"demo/calibration/extrinsics/extrinsics_20231014/extrinsics.json"
     )
 
     merged_points = []
@@ -23,7 +23,7 @@ def extract_merged_points():
     for camera_id in CAMERA_IDS:
         # camera intrinsics
         K = read_K_matrix_from_json(
-            PROJ_ROOT / f"data/calibration/intrinsics/{camera_id}_640x480.json"
+            PROJ_ROOT / f"demo/calibration/intrinsics/{camera_id}_640x480.json"
         )
         # camera extrinsics
         RT = RTs[camera_id]
@@ -31,10 +31,10 @@ def extract_merged_points():
 
         # load RGBD images
         rgb = read_rgb_image(
-            PROJ_ROOT / f"data/recordings/20231022_193630/{camera_id}/color_000000.jpg"
+            PROJ_ROOT / f"demo/recordings/20231022_193630/{camera_id}/color_000000.jpg"
         )
         depth = read_depth_image(
-            PROJ_ROOT / f"data/recordings/20231022_193630/{camera_id}/depth_000000.png"
+            PROJ_ROOT / f"demo/recordings/20231022_193630/{camera_id}/depth_000000.png"
         )
 
         # convert depth to meters
