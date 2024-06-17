@@ -23,7 +23,7 @@ class RosbagExtractor:
     def extract_bag(self, bag_path: str, extrinsics_file: str = None) -> None:
         self._logger.info(f"Processing rosbag: {bag_path}")
         self._bag_file = Path(bag_path).resolve()
-        self._person_id = self._bag_file.parent.parent.name
+        self._person_id = self._bag_file.parent.parent.name.lower()
         self._save_folder = (
             self._base_folder / f"{self._person_id}_{self._bag_file.stem}"
         )

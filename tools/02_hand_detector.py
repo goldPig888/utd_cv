@@ -1,5 +1,6 @@
-from _init_paths import *
+import argparse
 
+from _init_paths import *
 from lib.Utils import *
 from lib.HandDetector import HandDetector
 from lib.SequenceLoader import SequenceLoader
@@ -160,6 +161,19 @@ def main():
     logger.info(">>>>>>>>>> Hand Detection Completed <<<<<<<<<<")
 
 
+def args_parser():
+    parser = argparse.ArgumentParser(description="Hand Detection")
+    parser.add_argument(
+        "--sequence_folder",
+        type=str,
+        required=True,
+        help="Path to the sequence folder, python <python_file> --sequence_folder <path_to_sequence_folder>",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    sequence_folder = PROJ_ROOT / "data/recordings/may_20240612_095552"
+    args = args_parser()
+    sequence_folder = Path(args.sequence_folder).resolve()
+
     main()
