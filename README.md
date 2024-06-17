@@ -199,12 +199,12 @@ This is the repository for the Summer Camp project. The project aims to estimate
       │   └── ...  
       ├── 043422252387
       │   ├── handmarks_000000.npy
-      │   ├── vis_000000.npy
+      │   ├── vis_000000.png
       │   ├── ...
       ├── ...
       ├── 117222250549
       │   ├── handmarks_000000.npy
-      │   ├── vis_000000.npy
+      │   ├── vis_000000.png
       │   ├── ...
       ```
     - The detected handmarks should be saved as the numpy array with the shape of `(num_hands, num_joints, 2)`.
