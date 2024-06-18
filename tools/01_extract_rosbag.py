@@ -1,12 +1,41 @@
+import argparse
 from _init_paths import *
 
 from lib.RosbagExtractor import RosbagExtractor
 
-if __name__ == "__main__":
-    extrinsics_file = (
-        PROJ_ROOT / "data/calibration/extrinsics/extrinsics_20240611/extrinsics.json"
+
+def args_parser():
+    parser = argparse.ArgumentParser(description="Extract rosbag data")
+    parser.add_argument(
+        "--rosbag",
+        type=str,
+        required=True,
+        help="Path to the rosbag file",
     )
-    rosbag_file = PROJ_ROOT / "data/rosbags/may/20240612/20240612_095552.bag"
+    parser.add_argument(
+        "--extrinsics",
+        type=str,
+        default=None,
+        help="Path to the extrinsics file",
+    )
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = args_parser()
+    rosbag_file = Path(args.rosbag).resolve()
+    extrinsics_file = (
+        Path(args.extrinsics).resolve()
+        if args.extrinsics
+        else sorted(
+            [
+                f
+                for f in Path((PROJ_ROOT / "data/calibration/extrinsics")).glob(
+                    "extrinsics_*/extrinsics.json"
+                )
+            ]
+        )[-1]
+    )
 
     # Initialize the RosbagExtractor
     extractor = RosbagExtractor()

@@ -37,15 +37,15 @@ if __name__ == "__main__":
 
     # >>>>>>>>>> load the intrinsics <<<<<<<<<<<<
     K1 = read_K_matrix_from_json(
-        PROJ_ROOT / "data/calibration/intrinsics/108222250342_640x480.json"
+        PROJ_ROOT / "demo/calibration/intrinsics/108222250342_640x480.json"
     )
     K2 = read_K_matrix_from_json(
-        PROJ_ROOT / "data/calibration/intrinsics/046122250168_640x480.json"
+        PROJ_ROOT / "demo/calibration/intrinsics/046122250168_640x480.json"
     )
 
     # >>>>>>>>>> load the extrinsics and invert them <<<<<<<<<<<<
     RTs, master_camera = read_extrinsics_from_json(
-        PROJ_ROOT / "data/calibration/extrinsics/extrinsics_20231014/extrinsics.json"
+        PROJ_ROOT / "demo/calibration/extrinsics/extrinsics_20231014/extrinsics.json"
     )
     RT1 = RTs["108222250342"]
     RT1_inv = np.linalg.inv(RT1)
@@ -64,16 +64,16 @@ if __name__ == "__main__":
 
     # read the color & depth images
     rgb1 = read_rgb_image(
-        PROJ_ROOT / "data/recordings/20231022_193630/108222250342/color_000000.jpg"
+        PROJ_ROOT / "demo/recordings/20231022_193630/108222250342/color_000000.jpg"
     )
     rgb2 = read_rgb_image(
-        PROJ_ROOT / "data/recordings/20231022_193630/046122250168/color_000000.jpg"
+        PROJ_ROOT / "demo/recordings/20231022_193630/046122250168/color_000000.jpg"
     )
     depth1 = read_depth_image(
-        PROJ_ROOT / "data/recordings/20231022_193630/108222250342/depth_000000.png"
+        PROJ_ROOT / "demo/recordings/20231022_193630/108222250342/depth_000000.png"
     )
     depth2 = read_depth_image(
-        PROJ_ROOT / "data/recordings/20231022_193630/046122250168/depth_000000.png"
+        PROJ_ROOT / "demo/recordings/20231022_193630/046122250168/depth_000000.png"
     )
 
     # convert the depth images to meters

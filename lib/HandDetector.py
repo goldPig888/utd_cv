@@ -28,7 +28,7 @@ class HandDetector:
             options = mp.tasks.vision.HandLandmarkerOptions(
                 base_options=mp.tasks.BaseOptions(
                     model_asset_path=str(
-                        PROJ_ROOT / "config/Mediapipe/hand_landmarker.task"
+                        PROJ_ROOT / "config/mediapipe/hand_landmarker.task"
                     ),
                     delegate=(
                         mp.tasks.BaseOptions.Delegate.CPU

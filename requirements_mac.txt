@@ -4,6 +4,12 @@ torch==2.1.1
 torchvision==0.16.1
 torchaudio==2.1.1
 
+# ROS
+rospkg==1.5.1
+pycryptodomex==3.20.0
+gnupg==2.3.1
+netifaces==0.11.0
+
 # JupyterLab
 jupyterlab==4.2.1
 ipywidgets==8.1.2
@@ -32,10 +38,12 @@ pyglet==1.5.29
 # PyRender
 pyrender==0.1.45
 pyOpenGL>=3.1.0
-# pyOpenGL_accelerate>=3.1.0
 
 # MediaPipe
 mediapipe==0.10.14
+
+# Mobile SAM
+timm==1.0.3
 
 # Chumpy
 git+https://github.com/gobanana520/chumpy.git

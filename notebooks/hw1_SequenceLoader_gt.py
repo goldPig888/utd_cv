@@ -95,7 +95,7 @@ class SequenceLoader:
 
 
 if __name__ == "__main__":
-    sequence_folder = PROJ_ROOT / "data/recordings/20231022_193630"
+    sequence_folder = PROJ_ROOT / "demo/recordings/20231022_193630"
     loader = SequenceLoader(sequence_folder)
     rs_serials = loader.rs_serials
 

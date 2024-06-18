@@ -1,16 +1,32 @@
 import open3d as o3d
 import open3d.core as o3c
-
+import torch
 from torch.utils.dlpack import to_dlpack
+import argparse
 
 from _init_paths import *
 from lib.Utils import display_images
 from lib.SequenceLoader import SequenceLoader
 
 
+def args_parser():
+    parser = argparse.ArgumentParser(description="Load sequence data")
+    parser.add_argument(
+        "--sequence_folder",
+        type=str,
+        required=True,
+        help="Path to the sequence folder",
+    )
+
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    sequence_folder = PROJ_ROOT / "data/recordings/may_20240612_095552"
-    loader = SequenceLoader(sequence_folder)
+    args = args_parser()
+    sequence_folder = Path(args.sequence_folder).resolve()
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    loader = SequenceLoader(sequence_folder, device=device)
 
     frame_id = 100
     loader.step_by_frame_id(frame_id)
