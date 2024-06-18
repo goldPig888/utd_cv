@@ -43,6 +43,9 @@ pyOpenGL_accelerate>=3.1.0
 # MediaPipe
 mediapipe==0.10.14
 
+# Mobile SAM
+timm==1.0.3
+
 # Chumpy
 git+https://github.com/gobanana520/chumpy.git
 

@@ -214,9 +214,26 @@ This is the repository for the Summer Camp project. The project aims to estimate
 
 ### Week 3
 
-**TBD**
+The reference code for HW1, HW2, and HW3 of week2 could be found in the `./tools` folder.
 
-
+- :white_check_mark: Collect the data with the Multi-Camera System.
+  - One or two hands
+  - Single object manipulation
+- :white_check_mark: Extract the images from the rosbag recordings.
+-  **Before Friday**, finish below homeworks, the extracted recordings could be downloaded from the [Box](https://utdallas.box.com/s/8sczu67ufl2wuirk4c6lyssex2y125fc).
+  - HW1: Complete the metadata.
+    - Download the recording of your name and unzip it to `./data/recordings`.
+    - Complete the `"object_ids"` and `"mano_sides"` information in the `meta.json` file. The `object_id` (G01_1,...,G31_4) could be found in the [Data Collection](#data-collection) section.
+  - HW2: Handmarks Detection.
+    Run the `./tools/02_hand_detector.py` on your recording to detect the handmarks.
+  - HW3: Generate the Object Masks for the Objects in each camera view.
+    - The `mask_id` (1, 2,...,10) of each object could be found in the [Data Collection](#data-collection) section.
+    - Install `timm` via `python pip install --no-cache-dir timm==1.0.3` in case it's not installed in the conda environment.
+    - Dwonload the pretrained models [4.3GB] for SAM:
+      - For linux like OS: run `bash ./config/sam/download_sam_model.sh` in the terminal.
+      - Or you could download the models from the [Box](https://utdallas.box.com/s/ve9ia13act2oos0s6k0mhbx6vhcj19ce) and put them under `./config/sam`.
+      - In case your disk space is limited, you could only download the `sam_vit_t.pth` model.
+    - Run the `./tools/mask_label_toolkit.py` to generate the object masks for the object in each camera view.
 ---
 
 ## Data Collection
