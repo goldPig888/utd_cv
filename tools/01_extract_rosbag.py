@@ -1,5 +1,6 @@
 import argparse
 from _init_paths import *
+import time
 
 from lib.RosbagExtractor import RosbagExtractor
 
@@ -22,6 +23,7 @@ def args_parser():
 
 
 if __name__ == "__main__":
+    start_time = time.perf_counter()
     args = args_parser()
     rosbag_file = Path(args.rosbag).resolve()
     extrinsics_file = (
@@ -42,3 +44,5 @@ if __name__ == "__main__":
 
     # Extract the rosbag
     extractor.extract_bag(rosbag_file, extrinsics_file)
+    end_time = time.perf_counter()
+    print(f"Total time: {end_time - start_time} seconds")
