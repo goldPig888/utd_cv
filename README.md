@@ -13,6 +13,7 @@
     - [Week 1](#week-1)
     - [Week 2](#week-2)
     - [Week 3](#week-3)
+    - [Week 4](#week-4)
   - [Data Collection](#data-collection)
 
 ## Introduction
@@ -234,6 +235,19 @@ The reference code for HW1, HW2, and HW3 of week2 could be found in the `./tools
       - Or you could download the models from the [Box](https://utdallas.box.com/s/ve9ia13act2oos0s6k0mhbx6vhcj19ce) and put them under `./config/sam`.
       - In case your disk space is limited, you could only download the `sam_vit_t.pth` model.
     - Run the `./tools/mask_label_toolkit.py` to generate the object masks for the object in each camera view.
+- [Introduction_to_6D_Pose_Estimation](./docs/slides/05_Introduction_to_6D_Pose_Estimation.pdf)
+  Understand the basic concepts of 6D Object Pose Estimation and the FoundationPose.
+  - :white_check_mark: Setup the python environment for the FoundationPose, and run the demo code successfully.
+- [Introduction to the HaMeR](./docs/slides/06_HaMeR.pdf)
+  Understand how the HaMeR works and how to use it to estimate the hand shape and pose.
+  - :white_check_mark: Setup the python environment for the HaMeR, and run the demo code successfully.
+- HW4: Generate the 3D Handmarks by Trangulation and RANSAC
+  - Follow the steps in [Generate the 3D Handmarks by Trangulation and RANSAC](./notebooks/07_Generate_3D_Handmarks_by_RANSAC.ipynb) to generate the 3D handmarks.
+
+### Week 4
+
+- 
+
 ---
 
 ## Data Collection
