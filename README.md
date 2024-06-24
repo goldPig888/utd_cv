@@ -13,7 +13,7 @@
     - [Week 1](#week-1)
     - [Week 2](#week-2)
     - [Week 3](#week-3)
-    - [Week 4](#week-4)
+    - [Week 4: Data Processing](#week-4-data-processing)
   - [Data Collection](#data-collection)
 
 ## Introduction
@@ -226,7 +226,7 @@ The reference code for HW1, HW2, and HW3 of week2 could be found in the `./tools
     - Download the recording of your name and unzip it to `./data/recordings`.
     - Complete the `"object_ids"` and `"mano_sides"` information in the `meta.json` file. The `object_id` (G01_1,...,G31_4) could be found in the [Data Collection](#data-collection) section.
   - HW2: Handmarks Detection.
-    Run the `./tools/02_hand_detector.py` on your recording to detect the handmarks.
+    Run the `./tools/02_run_hand_detector.py` on your recording to detect the handmarks.
   - HW3: Generate the Object Masks for the Objects in each camera view.
     - The `mask_id` (1, 2,...,10) of each object could be found in the [Data Collection](#data-collection) section.
     - Install `timm` via `python pip install --no-cache-dir timm==1.0.3` in case it's not installed in the conda environment.
@@ -234,7 +234,14 @@ The reference code for HW1, HW2, and HW3 of week2 could be found in the `./tools
       - For linux like OS: run `bash ./config/sam/download_sam_model.sh` in the terminal.
       - Or you could download the models from the [Box](https://utdallas.box.com/s/ve9ia13act2oos0s6k0mhbx6vhcj19ce) and put them under `./config/sam`.
       - In case your disk space is limited, you could only download the `sam_vit_t.pth` model.
-    - Run the `./tools/mask_label_toolkit.py` to generate the object masks for the object in each camera view.
+    - Run the `./tools/03_mask_label_toolkit.py` to generate the object masks for the object in each camera view.
+      - Click `...` to select the image.
+      - `Ctrl + Left Click` to add positive point (green color).
+      - `Ctrl + Right Click` to add negative point (red color).
+      - `R` to reset the points.
+      - Click `-` and `+` to set the mask id, and click `Add Mask` to add the mask.
+      - Click `Save Mask` to save the mask.
+    ![mask_label_toolkit](./docs/resources/labeltoolkit.gif)
 - [Introduction_to_6D_Pose_Estimation](./docs/slides/05_Introduction_to_6D_Pose_Estimation.pdf)
   Understand the basic concepts of 6D Object Pose Estimation and the FoundationPose.
   - :white_check_mark: Setup the python environment for the FoundationPose, and run the demo code successfully.
@@ -244,9 +251,14 @@ The reference code for HW1, HW2, and HW3 of week2 could be found in the `./tools
 - HW4: Generate the 3D Handmarks by Trangulation and RANSAC
   - Follow the steps in [Generate the 3D Handmarks by Trangulation and RANSAC](./notebooks/07_Generate_3D_Handmarks_by_RANSAC.ipynb) to generate the 3D handmarks.
 
-### Week 4
-
-- 
+### Week 4: Data Processing
+1. Complete the `meta.json` for all the recordings, refer to HW2 of Week 2.
+2. Run **MediaPipe** Handmarks Detection on all the recordings, refer to HW2 of Week 3.
+3. Generate the 3D handmarks for all the recordings, refer to HW4 of Week 3.
+4. Label the initial object masks for all the recordings, refer to HW3 of Week 3.
+5. Generate the object masks for all the recordings by **XMem** by running `./tools/04_run_xmem_segmentation.py`.
+6. Run **HaMeR** to estimate the hand pose on our data.
+7. Run **FoundationPose** to estimate the object pose on our data.
 
 ---
 

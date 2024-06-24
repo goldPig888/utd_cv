@@ -2,6 +2,7 @@ from pathlib import Path
 import shutil
 import json
 import math
+import sys
 import numpy as np
 import torch
 from scipy.spatial.transform import Rotation as R
@@ -24,6 +25,12 @@ from .Colors import (
 from .ManoInfo import *
 
 PROJ_ROOT = Path(__file__).resolve().parents[1]  # Get the project root directory
+EXTERNAL_ROOT = PROJ_ROOT / "externals"
+
+
+def add_path(path):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 
 def get_logger(log_level="INFO", log_name="default"):
@@ -672,18 +679,14 @@ def draw_debug_image(
         for label in np.unique(hand_mask):
             if label == 0:
                 continue
-            mask = hand_mask == label
-            color = HAND_COLORS[label]
-            overlay[mask] = color.rgb
+            overlay[hand_mask == label] = HAND_COLORS[label].rgb
 
     # draw object mask
     if object_mask is not None:
         for label in np.unique(object_mask):
             if label == 0:
                 continue
-            mask = object_mask == label
-            color = OBJ_CLASS_COLORS[label]
-            overlay[mask] = color.rgb
+            overlay[object_mask == label] = OBJ_CLASS_COLORS[label].rgb
 
     # draw boxes
     if draw_boxes:
@@ -813,4 +816,4 @@ def draw_debug_image(
         write_rgb_image(save_path, overlay)
 
     if return_image:
-        return overlay if idx is None else overlay, idx
+        return overlay if idx is None else (overlay, idx)

@@ -75,21 +75,33 @@ COLORS = {
     "darkgray": RGBA(64, 64, 64, 255),
     "lightgray": RGBA(192, 192, 192, 255),
     "tomato": RGBA(255, 99, 71, 255),
+    "tab10_0": RGBA(31, 119, 180, 255),
+    "tab10_1": RGBA(255, 127, 14, 255),
+    "tab10_2": RGBA(44, 160, 44, 255),
+    "tab10_3": RGBA(214, 39, 40, 255),
+    "tab10_4": RGBA(148, 103, 189, 255),
+    "tab10_5": RGBA(140, 86, 75, 255),
+    "tab10_6": RGBA(227, 119, 194, 255),
+    "tab10_7": RGBA(127, 127, 127, 255),
+    "tab10_8": RGBA(188, 189, 34, 255),
+    "tab10_9": RGBA(23, 190, 207, 255),
 }
 
 
 # RGB colors for Object classes
 OBJ_CLASS_COLORS = [
     COLORS["black"],  # background
-    COLORS["red"],  # object_id 1
-    COLORS["green"],  # object_id 2
-    COLORS["blue"],  # object_id 3
-    COLORS["yellow"],  # object_id 4
-    COLORS["magenta"],  # object_id 5
-    COLORS["cyan"],  # object_id 6
+    COLORS["tab10_0"],  # object 1
+    COLORS["tab10_1"],  # object 2
+    COLORS["tab10_2"],  # object 3
+    COLORS["tab10_3"],  # object 4
+    COLORS["tab10_4"],  # object 5
+    COLORS["tab10_5"],  # object 6
+    COLORS["tab10_6"],  # object 7
+    COLORS["tab10_7"],  # object 8
+    COLORS["tab10_8"],  # object 9
+    COLORS["tab10_9"],  # object 10
 ]
-
-OBJECT_COLORS = OBJ_CLASS_COLORS
 
 
 # RGB colors for Hands
