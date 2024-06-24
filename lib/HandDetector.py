@@ -24,51 +24,28 @@ class HandDetector:
         self._detector = self._init_mp_hand_detector()
 
     def _init_mp_hand_detector(self):
-        if self._mode == "image":
-            options = mp.tasks.vision.HandLandmarkerOptions(
-                base_options=mp.tasks.BaseOptions(
-                    model_asset_path=str(
-                        PROJ_ROOT / "config/mediapipe/hand_landmarker.task"
-                    ),
-                    delegate=(
-                        mp.tasks.BaseOptions.Delegate.CPU
-                        if self._device == "cpu"
-                        else mp.tasks.BaseOptions.Delegate.GPU
-                    ),
-                ),
-                running_mode=mp.tasks.vision.RunningMode.IMAGE,
-                num_hands=self._config["max_num_hands"],
-                min_hand_detection_confidence=self._config[
-                    "min_hand_detection_confidence"
-                ],
-                min_tracking_confidence=self._config["min_tracking_confidence"],
-                min_hand_presence_confidence=self._config[
-                    "min_hand_presence_confidence"
-                ],
-            )
-        if self._mode == "video":
-            options = mp.tasks.vision.HandLandmarkerOptions(
-                base_options=mp.tasks.BaseOptions(
-                    model_asset_path=str(
-                        PROJ_ROOT / "config/Mediapipe/hand_landmarker.task"
-                    ),
-                    delegate=(
-                        mp.tasks.BaseOptions.Delegate.CPU
-                        if self._device == "cpu"
-                        else mp.tasks.BaseOptions.Delegate.GPU
-                    ),
-                ),
-                running_mode=mp.tasks.vision.RunningMode.VIDEO,
-                num_hands=self._config["max_num_hands"],
-                min_hand_detection_confidence=self._config[
-                    "min_hand_detection_confidence"
-                ],
-                min_tracking_confidence=self._config["min_tracking_confidence"],
-                min_hand_presence_confidence=self._config[
-                    "min_hand_presence_confidence"
-                ],
-            )
-        return mp.tasks.vision.HandLandmarker.create_from_options(options)
+        base_options = mp.tasks.BaseOptions(
+            model_asset_path=str(PROJ_ROOT / "config/mediapipe/hand_landmarker.task"),
+            delegate=(
+                mp.tasks.BaseOptions.Delegate.CPU
+                if self._device == "cpu"
+                else mp.tasks.BaseOptions.Delegate.GPU
+            ),
+        )
+        running_mode = (
+            mp.tasks.vision.RunningMode.IMAGE
+            if self._mode == "image"
+            else mp.tasks.vision.RunningMode.VIDEO
+        )
+        mp_options = mp.tasks.vision.HandLandmarkerOptions(
+            base_options=base_options,
+            running_mode=running_mode,
+            num_hands=self._config["max_num_hands"],
+            min_hand_detection_confidence=self._config["min_hand_detection_confidence"],
+            min_tracking_confidence=self._config["min_tracking_confidence"],
+            min_hand_presence_confidence=self._config["min_hand_presence_confidence"],
+        )
+        return mp.tasks.vision.HandLandmarker.create_from_options(mp_options)
 
     def detect_one(self, rgb_image):
         """
