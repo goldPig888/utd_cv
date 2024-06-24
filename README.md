@@ -10,9 +10,9 @@
     - [Clone the Repository](#clone-the-repository)
     - [Python Environment Setup](#python-environment-setup)
   - [Project Schedule](#project-schedule)
-    - [Week 1](#week-1)
-    - [Week 2](#week-2)
-    - [Week 3](#week-3)
+    - [Week 1: Introduction to the Basics](#week-1-introduction-to-the-basics)
+    - [Week 2: Data Collection](#week-2-data-collection)
+    - [Week 3: Scripts Preparation](#week-3-scripts-preparation)
     - [Week 4: Data Processing](#week-4-data-processing)
   - [Data Collection](#data-collection)
 
@@ -68,7 +68,7 @@ This is the repository for the Summer Camp project. The project aims to estimate
 
 ## Project Schedule
 
-### Week 1
+### Week 1: Introduction to the Basics
 - :white_check_mark: [Pythion Basics](./notebooks/01_Python_Basics.ipynb)
   Try to understand basics in Python, such as list, tuple, set, dictionary, class, function, loop, etc.
 
@@ -120,7 +120,7 @@ This is the repository for the Summer Camp project. The project aims to estimate
     - Video Object Segmentation
       - [XMem](https://hkchengrex.com/XMem)
 
-### Week 2
+### Week 2: Data Collection
 
 - Overview of FoundationPose and Segment Anything
   - [FoundationPose](./docs/papers/FoundationPose.pdf)
@@ -213,7 +213,7 @@ This is the repository for the Summer Camp project. The project aims to estimate
     - The detected handmarks should be saved in the order of the right hand first, and then the left hand.
 
 
-### Week 3
+### Week 3: Scripts Preparation
 
 The reference code for HW1, HW2, and HW3 of week2 could be found in the `./tools` folder.
 
