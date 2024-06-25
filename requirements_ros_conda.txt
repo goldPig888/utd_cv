@@ -38,7 +38,7 @@ pyglet==1.5.29
 # PyRender
 pyrender==0.1.45
 pyOpenGL>=3.1.0
-pyOpenGL_accelerate>=3.1.0
+# pyOpenGL_accelerate>=3.1.0
 
 # MediaPipe
 mediapipe==0.10.14
