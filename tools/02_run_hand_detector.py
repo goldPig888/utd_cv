@@ -50,6 +50,7 @@ def main():
     serials = loader.serials
     num_frames = loader.num_frames
     mano_sides = loader.mano_sides
+    MP_CONFIG["max_num_hands"] = len(mano_sides)
 
     logger.info(">>>>>>>>>> Running MediaPipe Hand Detection <<<<<<<<<<")
 
@@ -131,8 +132,9 @@ def main():
             del futures
         tqbar.close()
 
-        tqdm.write(f"    ** Saving vis images...")
+        tqdm.write(f"    ** Generating vis images...")
         tqbar = tqdm(total=num_frames, ncols=60, colour="green")
+        vis_images = [None] * num_frames
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = {
                 executor.submit(
@@ -141,8 +143,24 @@ def main():
                     hand_marks=mp_handmarks[serial][frame_id],
                     draw_boxes=True,
                     draw_hand_sides=True,
-                    save_path=save_folder / f"vis_{frame_id:06d}.png",
-                    return_image=False,
+                ): frame_id
+                for frame_id in range(num_frames)
+            }
+            for future in concurrent.futures.as_completed(futures):
+                vis_images[futures[future]] = future.result()
+                tqbar.update()
+                tqbar.refresh()
+            del futures
+        tqbar.close()
+
+        tqdm.write(f"    ** Saving vis images...")
+        tqbar = tqdm(total=num_frames, ncols=60, colour="green")
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(
+                    write_rgb_image,
+                    save_folder / f"vis_{frame_id:06d}.png",
+                    vis_images[frame_id],
                 ): frame_id
                 for frame_id in range(num_frames)
             }

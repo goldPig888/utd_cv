@@ -5,7 +5,6 @@ from torch.utils.dlpack import to_dlpack
 import argparse
 
 from _init_paths import *
-from lib.Utils import display_images
 from lib.SequenceLoader import SequenceLoader
 
 

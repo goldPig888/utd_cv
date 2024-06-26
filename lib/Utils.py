@@ -3,6 +3,7 @@ import shutil
 import json
 import math
 import sys
+import av
 import numpy as np
 import torch
 from scipy.spatial.transform import Rotation as R
@@ -33,7 +34,7 @@ def add_path(path):
         sys.path.insert(0, str(path))
 
 
-def get_logger(log_level="INFO", log_name="default"):
+def get_logger(log_name="default", log_level="INFO"):
     import logging
 
     levels = {
@@ -270,28 +271,28 @@ def quat_to_rvt(quat):
         return np.concatenate([rv, t], dtype=np.float32)  # No axis needed for 1D arrays
 
 
-def read_rgb_image(image_path, idx=None):
+def read_rgb_image(image_path):
     image = cv2.imread(str(image_path))
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    return image if idx is None else (image, idx)
+    return image
 
 
 def write_rgb_image(image_path, image):
     cv2.imwrite(str(image_path), image[:, :, ::-1])
 
 
-def read_depth_image(image_path, idx=None):
+def read_depth_image(image_path):
     image = cv2.imread(str(image_path), cv2.IMREAD_ANYDEPTH)
-    return image if idx is None else (image, idx)
+    return image
 
 
 def write_depth_image(image_path, image):
     cv2.imwrite(str(image_path), image)
 
 
-def read_mask_image(image_path, idx=None):
+def read_mask_image(image_path):
     image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
-    return image if idx is None else (image, idx)
+    return image
 
 
 def write_mask_image(image_path, image):
@@ -299,32 +300,108 @@ def write_mask_image(image_path, image):
 
 
 def create_video_from_rgb_images(video_path, images, fps=30):
+    """
+    Create a video from a list of RGB images using H.264 codec with PyAV.
+
+    Args:
+        video_path (str): Path to save the output video.
+        images (list of ndarray): List of RGB images to include in the video.
+        fps (int, optional): Frames per second for the video. Defaults to 30.
+
+    Returns:
+        None
+    """
+    if not images:
+        raise ValueError("The images list is empty.")
+
+    # Ensure all images have the same shape
     height, width, _ = images[0].shape
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    video = cv2.VideoWriter(str(video_path), fourcc, fps, (width, height))
     for image in images:
-        video.write(image)
-    video.release()
+        if image.shape != (height, width, 3):
+            raise ValueError("All images must have the same dimensions and be RGB.")
+
+    # Create a video container
+    container = av.open(video_path, mode="w")
+
+    # Create a video stream
+    stream = container.add_stream("h264", rate=fps)
+    stream.width = width
+    stream.height = height
+    stream.pix_fmt = "yuv420p"
+
+    for image in images:
+        # Convert image from RGB to YUV420
+        frame = av.VideoFrame.from_ndarray(image, format="rgb24")
+        frame = frame.reformat(format="yuv420p")
+
+        # Encode the frame
+        for packet in stream.encode(frame):
+            container.mux(packet)
+
+    # Flush and close the container
+    for packet in stream.encode():
+        container.mux(packet)
+    container.close()
 
 
-def erode_mask(mask, kernel_size=3, interations=1):
+def erode_mask(mask, kernel_size=3, iterations=1):
+    """
+    Erode a mask image using a specified kernel size and number of iterations.
+
+    Args:
+        mask (np.ndarray): The mask image to be eroded.
+        kernel_size (int, optional): Size of the erosion kernel. Default is 3.
+        iterations (int, optional): Number of erosion iterations. Default is 1.
+
+    Returns:
+        np.ndarray: The eroded mask image.
+    """
+    # If the kernel size is less than or equal to 1, return the original mask
     if kernel_size <= 1:
         return mask
+
+    # Create the erosion kernel
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    m_dtype = mask.dtype
-    mask = mask.astype(np.uint8)
-    mask = cv2.erode(mask, kernel, iterations=interations)
-    return mask.astype(m_dtype)
+
+    # Convert the mask to uint8 if necessary
+    original_dtype = mask.dtype
+    mask_uint8 = mask.astype(np.uint8)
+
+    # Apply the erosion
+    eroded_mask = cv2.erode(mask_uint8, kernel, iterations=iterations)
+
+    # Convert the eroded mask back to its original data type
+    return eroded_mask.astype(original_dtype)
 
 
-def dilate_mask(mask, kernel_size=3, interations=1):
+def dilate_mask(mask, kernel_size=3, iterations=1):
+    """
+    Dilate a mask image using a specified kernel size and number of iterations.
+
+    Args:
+        mask (np.ndarray): The mask image to be dilated.
+        kernel_size (int, optional): Size of the dilation kernel. Default is 3.
+        iterations (int, optional): Number of dilation iterations. Default is 1.
+
+    Returns:
+        np.ndarray: The dilated mask image.
+    """
+    # If the kernel size is less than or equal to 1, return the original mask
     if kernel_size <= 1:
         return mask
+
+    # Create the dilation kernel
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    m_dtype = mask.dtype
-    mask = mask.astype(np.uint8)
-    mask = cv2.dilate(mask, kernel, iterations=interations)
-    return mask.astype(m_dtype)
+
+    # Convert the mask to uint8 if necessary
+    original_dtype = mask.dtype
+    mask_uint8 = mask.astype(np.uint8)
+
+    # Apply the dilation
+    dilated_mask = cv2.dilate(mask_uint8, kernel, iterations=iterations)
+
+    # Convert the dilated mask back to its original data type
+    return dilated_mask.astype(original_dtype)
 
 
 def adjust_xyxy_bbox(bbox, width, height, margin=3):
@@ -489,7 +566,6 @@ def display_images(
     facecolor="white",
     save_path=None,
     return_array=False,
-    idx=None,
 ):
     num_images = len(images)
     num_cols = min(num_images, max_cols)
@@ -544,37 +620,49 @@ def display_images(
         plt.close(fig)
 
     if return_array:
-        return img_array if idx is None else (img_array, idx)
+        return img_array
 
 
-def draw_hand_landmarks(image, landmarks, hand_side=None, box=None, rgb_input=True):
+def draw_hand_landmarks(image, landmarks, hand_side=None, box=None):
+    """
+    Draws hand landmarks, bones, and optional hand side text and bounding box on an image.
+
+    Args:
+        image (np.ndarray): The image on which to draw the landmarks.
+        landmarks (np.ndarray): Array of hand landmarks.
+        hand_side (str, optional): Indicates 'left' or 'right' hand. Default is None.
+        box (tuple, optional): Bounding box coordinates as (x1, y1, x2, y2). Default is None.
+
+    Returns:
+        np.ndarray: Image with drawn hand landmarks.
+    """
     img = image.copy()
 
-    # draw bones
+    # Draw bones
     for idx, bone in enumerate(HAND_BONES):
         start, end = landmarks[bone[0]], landmarks[bone[1]]
         if np.any(start == -1) or np.any(end == -1):
             continue
-        color = HAND_BONE_COLORS[idx].rgb if rgb_input else HAND_BONE_COLORS[idx].bgr
+        color = HAND_BONE_COLORS[idx].rgb
         cv2.line(img, tuple(start), tuple(end), color, 2)
 
-    # draw joints
+    # Draw joints
     for idx, mark in enumerate(landmarks):
         if np.any(mark == -1):
             continue
-        cv2.circle(img, tuple(mark), 5, [255, 255, 255], -1)  # White base for joints
-        color = HAND_JOINT_COLORS[idx].rgb if rgb_input else HAND_JOINT_COLORS[idx].bgr
+        cv2.circle(img, tuple(mark), 5, (255, 255, 255), -1)  # White base for joints
+        color = HAND_JOINT_COLORS[idx].rgb
         cv2.circle(img, tuple(mark), 3, color, -1)
 
-    # draw bounding box
+    # Draw bounding box
     if box:
         cv2.rectangle(img, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
 
-    # draw hand side text
+    # Draw hand side text
     if hand_side:
         text = hand_side.lower()
         text_x = np.min(landmarks[:, 0])
-        text_y = np.min(landmarks[:, 1]) - 5  # add margin to top
+        text_y = np.min(landmarks[:, 1]) - 5  # Add margin to top
         text_color = HAND_COLORS[1] if text == "right" else HAND_COLORS[2]
         cv2.putText(
             img,
@@ -582,10 +670,11 @@ def draw_hand_landmarks(image, landmarks, hand_side=None, box=None, rgb_input=Tr
             (text_x, text_y),
             cv2.FONT_HERSHEY_DUPLEX,
             1,
-            text_color.rgb if rgb_input else text_color.bgr,
+            text_color.rgb,
             1,
             cv2.LINE_AA,
         )
+
     return img
 
 
@@ -608,31 +697,43 @@ def draw_losses_curve(
         title (str): Title of the plot. Default is "Loss Curves".
         xlabel (str): Label for the x-axis. Default is "Epoch".
         ylabel (str): Label for the y-axis. Default is "Loss".
+        figsize (tuple, optional): Size of the figure. Default is (19.2, 10.8).
+        dpi (int, optional): Dots per inch for the figure. Default is 100.
+        save_path (str, optional): Path to save the plot. If None, the plot will be displayed. Default is None.
 
     Returns:
         None
     """
+    # Create a new figure with the specified size and DPI
     plt.figure(figsize=figsize, dpi=dpi)
 
+    # Plot each loss curve with an appropriate label
     for i, loss_list in enumerate(loss_lists):
-        label = labels[i] if labels else f"Loss {i+1}"
+        label = labels[i] if labels and i < len(labels) else f"Loss {i+1}"
         plt.plot(loss_list, label=label)
 
+    # Set the title and labels for the plot
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
+
+    # Display the legend and grid
     plt.legend()
     plt.grid(True)
 
+    # Save the plot to a file if save_path is provided, otherwise display it
     if save_path:
         plt.savefig(str(save_path), bbox_inches="tight", pad_inches=0)
     else:
         plt.show()
+
+    # Close the figure to free memory
     plt.close()
 
 
 def draw_mask_overlay(rgb, mask, alpha=0.5, mask_color=(0, 255, 0), reduce_bg=False):
-    """Draw a mask overlay on an RGB image.
+    """
+    Draw a mask overlay on an RGB image.
 
     Args:
         rgb (np.ndarray): RGB image, shape (height, width, 3).
@@ -645,19 +746,179 @@ def draw_mask_overlay(rgb, mask, alpha=0.5, mask_color=(0, 255, 0), reduce_bg=Fa
         np.ndarray: RGB image with mask overlay.
     """
     # Create an overlay based on whether to reduce the background
-    overlay = np.zeros_like(rgb) if reduce_bg else rgb.copy()
+    if reduce_bg:
+        overlay = np.zeros_like(rgb)
+    else:
+        overlay = rgb.copy()
 
     # Apply the mask color to the overlay where the mask is true
     overlay[mask.astype(bool)] = mask_color
 
     # Blend the overlay with the original image
-    overlay = cv2.addWeighted(overlay, alpha, rgb, 1 - alpha, 0)
+    blended = cv2.addWeighted(overlay, alpha, rgb, 1 - alpha, 0)
 
-    return overlay
+    return blended
+
+
+# def draw_debug_image(
+#     rgb_image,
+#     hand_mask=None,
+#     object_mask=None,
+#     prompt_points=None,
+#     prompt_labels=None,
+#     hand_marks=None,
+#     alpha=0.5,
+#     reduce_background=False,
+#     draw_boxes=False,
+#     draw_hand_sides=False,
+# ):
+#     height, width = rgb_image.shape[:2]
+#     overlay = np.zeros_like(rgb_image) if reduce_background else rgb_image.copy()
+
+#     # draw hand mask
+#     if hand_mask is not None:
+#         for label in np.unique(hand_mask):
+#             if label == 0:
+#                 continue
+#             overlay[hand_mask == label] = HAND_COLORS[label].rgb
+
+#     # draw object mask
+#     if object_mask is not None:
+#         for label in np.unique(object_mask):
+#             if label == 0:
+#                 continue
+#             overlay[object_mask == label] = OBJ_CLASS_COLORS[label].rgb
+
+#     # draw boxes
+#     if draw_boxes:
+#         if hand_mask is not None:
+#             for label in np.unique(hand_mask):
+#                 if label == 0:
+#                     continue
+#                 mask = hand_mask == label
+#                 color = HAND_COLORS[label]
+#                 box = get_bbox_from_mask(mask)
+#                 cv2.rectangle(
+#                     overlay,
+#                     (box[0], box[1]),
+#                     (box[2], box[3]),
+#                     color.rgb,
+#                     2,
+#                 )
+#         if object_mask is not None:
+#             for label in np.unique(object_mask):
+#                 if label == 0:
+#                     continue
+#                 mask = object_mask == label
+#                 box = get_bbox_from_mask(mask)
+#                 color = OBJ_CLASS_COLORS[label]
+#                 cv2.rectangle(
+#                     overlay,
+#                     (box[0], box[1]),
+#                     (box[2], box[3]),
+#                     color.rgb,
+#                     2,
+#                 )
+
+#     # draw prompt points
+#     if prompt_points is not None and prompt_labels is not None:
+#         points = np.array(prompt_points, dtype=np.int32).reshape(-1, 2)
+#         labels = np.array(prompt_labels, dtype=np.int32).reshape(-1)
+#         for i, (point, label) in enumerate(zip(points, labels)):
+#             color = COLORS["dark_red"] if label == 0 else COLORS["dark_green"]
+#             cv2.circle(overlay, point, 3, color.rgb, -1)
+
+#     overlay = cv2.addWeighted(rgb_image, 1 - alpha, overlay, alpha, 0)
+
+#     # draw hand sides for hand mask
+#     if draw_hand_sides and hand_mask is not None and hand_marks is None:
+#         for label in np.unique(hand_mask):
+#             if label == 0:
+#                 continue
+#             mask = hand_mask == label
+#             color = HAND_COLORS[label]
+#             text = "right" if label == 1 else "left"
+#             x, y, _, _ = cv2.boundingRect(mask.astype(np.uint8))
+#             text_x = x
+#             text_y = y - 5
+#             cv2.putText(
+#                 overlay,
+#                 text,
+#                 (text_x, text_y),
+#                 cv2.FONT_HERSHEY_DUPLEX,
+#                 1,
+#                 color.rgb,
+#                 1,
+#                 cv2.LINE_AA,
+#             )
+
+#     # draw hand landmarks
+#     if hand_marks is not None:
+#         for ind, marks in enumerate(hand_marks):
+#             if np.all(marks == -1):
+#                 continue
+
+#             # draw bones
+#             for bone_idx, bone in enumerate(HAND_BONES):
+#                 if np.any(marks[bone[0]] == -1) or np.any(marks[bone[1]] == -1):
+#                     continue
+#                 color = HAND_BONE_COLORS[bone_idx]
+#                 cv2.line(
+#                     overlay,
+#                     marks[bone[0]],
+#                     marks[bone[1]],
+#                     color.rgb,
+#                     2,
+#                 )
+#             # draw joints
+#             for i, mark in enumerate(marks):
+#                 if np.any(mark == -1):
+#                     continue
+#                 color = HAND_JOINT_COLORS[i]
+#                 cv2.circle(overlay, mark, 5, (255, 255, 255), -1)
+#                 cv2.circle(
+#                     overlay,
+#                     mark,
+#                     3,
+#                     color.rgb,
+#                     -1,
+#                 )
+
+#             if draw_boxes:
+#                 box = get_bbox_from_landmarks(marks, width, height)
+#                 color = HAND_COLORS[1] if ind == 0 else HAND_COLORS[2]
+#                 cv2.rectangle(
+#                     overlay,
+#                     (box[0], box[1]),
+#                     (box[2], box[3]),
+#                     color.rgb,
+#                     2,
+#                 )
+
+#             if draw_hand_sides:
+#                 text = "right" if ind == 0 else "left"
+#                 color = HAND_COLORS[1] if ind == 0 else HAND_COLORS[2]
+#                 x, y, _, _ = cv2.boundingRect(
+#                     np.array([m for m in marks if np.all(m != -1)], dtype=np.int64)
+#                 )
+#                 text_x = x
+#                 text_y = y - 5
+#                 cv2.putText(
+#                     overlay,
+#                     text,
+#                     (text_x, text_y),
+#                     cv2.FONT_HERSHEY_DUPLEX,
+#                     1,
+#                     color.rgb,
+#                     1,
+#                     cv2.LINE_AA,
+#                 )
+
+#     return overlay
 
 
 def draw_debug_image(
-    color_image,
+    rgb_image,
     hand_mask=None,
     object_mask=None,
     prompt_points=None,
@@ -667,69 +928,69 @@ def draw_debug_image(
     reduce_background=False,
     draw_boxes=False,
     draw_hand_sides=False,
-    save_path=None,
-    return_image=True,
-    idx=None,
 ):
-    height, width = color_image.shape[:2]
-    overlay = np.zeros_like(color_image) if reduce_background else color_image.copy()
+    """
+    Draws debug information on an RGB image.
 
-    # draw hand mask
+    Args:
+        rgb_image (np.ndarray): The original RGB image.
+        hand_mask (np.ndarray, optional): Mask of the hands.
+        object_mask (np.ndarray, optional): Mask of the objects.
+        prompt_points (list, optional): Points to be drawn on the image.
+        prompt_labels (list, optional): Labels for the prompt points.
+        hand_marks (list, optional): Hand landmark points.
+        alpha (float, optional): Transparency factor for overlay. Defaults to 0.5.
+        reduce_background (bool, optional): Whether to reduce the background visibility. Defaults to False.
+        draw_boxes (bool, optional): Whether to draw bounding boxes around hands and objects. Defaults to False.
+        draw_hand_sides (bool, optional): Whether to draw text indicating left/right hand. Defaults to False.
+
+    Returns:
+        np.ndarray: The image with debug information drawn on it.
+    """
+    height, width = rgb_image.shape[:2]
+    overlay = np.zeros_like(rgb_image) if reduce_background else rgb_image.copy()
+
+    def apply_mask(mask, colors):
+        for label in np.unique(mask):
+            if label == 0:
+                continue
+            overlay[mask == label] = colors[label].rgb
+
+    def draw_boxes_from_mask(mask, colors):
+        for label in np.unique(mask):
+            if label == 0:
+                continue
+            box = get_bbox_from_mask(mask == label)
+            cv2.rectangle(
+                overlay, (box[0], box[1]), (box[2], box[3]), colors[label].rgb, 2
+            )
+
+    # Draw hand mask
     if hand_mask is not None:
-        for label in np.unique(hand_mask):
-            if label == 0:
-                continue
-            overlay[hand_mask == label] = HAND_COLORS[label].rgb
+        apply_mask(hand_mask, HAND_COLORS)
 
-    # draw object mask
+    # Draw object mask
     if object_mask is not None:
-        for label in np.unique(object_mask):
-            if label == 0:
-                continue
-            overlay[object_mask == label] = OBJ_CLASS_COLORS[label].rgb
+        apply_mask(object_mask, OBJ_CLASS_COLORS)
 
-    # draw boxes
+    # Draw bounding boxes
     if draw_boxes:
         if hand_mask is not None:
-            for label in np.unique(hand_mask):
-                if label == 0:
-                    continue
-                mask = hand_mask == label
-                color = HAND_COLORS[label]
-                box = get_bbox_from_mask(mask)
-                cv2.rectangle(
-                    overlay,
-                    (box[0], box[1]),
-                    (box[2], box[3]),
-                    color.rgb,
-                    2,
-                )
+            draw_boxes_from_mask(hand_mask, HAND_COLORS)
         if object_mask is not None:
-            for label in np.unique(object_mask):
-                if label == 0:
-                    continue
-                mask = object_mask == label
-                box = get_bbox_from_mask(mask)
-                color = OBJ_CLASS_COLORS[label]
-                cv2.rectangle(
-                    overlay,
-                    (box[0], box[1]),
-                    (box[2], box[3]),
-                    color.rgb,
-                    2,
-                )
+            draw_boxes_from_mask(object_mask, OBJ_CLASS_COLORS)
 
-    # draw prompt points
+    # Draw prompt points
     if prompt_points is not None and prompt_labels is not None:
         points = np.array(prompt_points, dtype=np.int32).reshape(-1, 2)
         labels = np.array(prompt_labels, dtype=np.int32).reshape(-1)
-        for i, (point, label) in enumerate(zip(points, labels)):
+        for point, label in zip(points, labels):
             color = COLORS["dark_red"] if label == 0 else COLORS["dark_green"]
-            cv2.circle(overlay, point, 3, color.rgb, -1)
+            cv2.circle(overlay, tuple(point), 3, color.rgb, -1)
 
-    overlay = cv2.addWeighted(color_image, 1 - alpha, overlay, alpha, 0)
+    overlay = cv2.addWeighted(rgb_image, 1 - alpha, overlay, alpha, 0)
 
-    # draw hand sides for hand mask
+    # Draw hand sides
     if draw_hand_sides and hand_mask is not None and hand_marks is None:
         for label in np.unique(hand_mask):
             if label == 0:
@@ -738,12 +999,10 @@ def draw_debug_image(
             color = HAND_COLORS[label]
             text = "right" if label == 1 else "left"
             x, y, _, _ = cv2.boundingRect(mask.astype(np.uint8))
-            text_x = x
-            text_y = y - 5
             cv2.putText(
                 overlay,
                 text,
-                (text_x, text_y),
+                (x, y - 5),
                 cv2.FONT_HERSHEY_DUPLEX,
                 1,
                 color.rgb,
@@ -751,48 +1010,31 @@ def draw_debug_image(
                 cv2.LINE_AA,
             )
 
-    # draw hand landmarks
+    # Draw hand landmarks
     if hand_marks is not None:
         for ind, marks in enumerate(hand_marks):
             if np.all(marks == -1):
                 continue
 
-            # draw bones
-            for bone_idx, bone in enumerate(HAND_BONES):
-                if np.any(marks[bone[0]] == -1) or np.any(marks[bone[1]] == -1):
+            # Draw bones
+            for bone_idx, (start, end) in enumerate(HAND_BONES):
+                if np.any(marks[start] == -1) or np.any(marks[end] == -1):
                     continue
                 color = HAND_BONE_COLORS[bone_idx]
-                cv2.line(
-                    overlay,
-                    marks[bone[0]],
-                    marks[bone[1]],
-                    color.rgb,
-                    2,
-                )
-            # draw joints
+                cv2.line(overlay, tuple(marks[start]), tuple(marks[end]), color.rgb, 2)
+
+            # Draw joints
             for i, mark in enumerate(marks):
                 if np.any(mark == -1):
                     continue
                 color = HAND_JOINT_COLORS[i]
-                cv2.circle(overlay, mark, 5, (255, 255, 255), -1)
-                cv2.circle(
-                    overlay,
-                    mark,
-                    3,
-                    color.rgb,
-                    -1,
-                )
+                cv2.circle(overlay, tuple(mark), 5, (255, 255, 255), -1)
+                cv2.circle(overlay, tuple(mark), 3, color.rgb, -1)
 
             if draw_boxes:
                 box = get_bbox_from_landmarks(marks, width, height)
                 color = HAND_COLORS[1] if ind == 0 else HAND_COLORS[2]
-                cv2.rectangle(
-                    overlay,
-                    (box[0], box[1]),
-                    (box[2], box[3]),
-                    color.rgb,
-                    2,
-                )
+                cv2.rectangle(overlay, (box[0], box[1]), (box[2], box[3]), color.rgb, 2)
 
             if draw_hand_sides:
                 text = "right" if ind == 0 else "left"
@@ -800,20 +1042,15 @@ def draw_debug_image(
                 x, y, _, _ = cv2.boundingRect(
                     np.array([m for m in marks if np.all(m != -1)], dtype=np.int64)
                 )
-                text_x = x
-                text_y = y - 5
                 cv2.putText(
                     overlay,
                     text,
-                    (text_x, text_y),
+                    (x, y - 5),
                     cv2.FONT_HERSHEY_DUPLEX,
                     1,
                     color.rgb,
                     1,
                     cv2.LINE_AA,
                 )
-    if save_path is not None:
-        write_rgb_image(save_path, overlay)
 
-    if return_image:
-        return overlay if idx is None else (overlay, idx)
+    return overlay

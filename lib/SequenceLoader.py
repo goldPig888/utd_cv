@@ -261,17 +261,15 @@ class SequenceLoader:
         if serial is None:
             data = [None] * self._num_cams
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                workers = [
+                futures = {
                     executor.submit(
                         read_rgb_image,
-                        self._data_folder / s / f"color_{frame_id:06d}.jpg",
-                        idx=i,
-                    )
-                    for i, s in enumerate(self._serials)
-                ]
-                for worker in concurrent.futures.as_completed(workers):
-                    img, idx = worker.result()
-                    data[idx] = img
+                        self._data_folder / serial / f"color_{frame_id:06d}.jpg",
+                    ): i
+                    for i, serial in enumerate(self._serials)
+                }
+                for future in concurrent.futures.as_completed(futures):
+                    data[futures[future]] = future.result()
         else:
             data = read_rgb_image(
                 self._data_folder / serial / f"color_{frame_id:06d}.jpg"
