@@ -446,7 +446,7 @@ def adjust_xyxy_bbox(bbox, width, height, margin=3):
     return np.array([x_min, y_min, x_max, y_max], dtype=np.int64)
 
 
-def get_bbox_from_landmarks(landmarks, width, height, margin=3):
+def get_bbox_from_landmarks(landmarks, width, height, margin=5):
     """
     Calculate a bounding box from a set of landmarks, adding an optional margin.
 
@@ -475,9 +475,7 @@ def get_bbox_from_landmarks(landmarks, width, height, margin=3):
 
     valid_marks = landmarks[~np.any(landmarks == -1, axis=1)]
     if valid_marks.size == 0:
-        raise ValueError(
-            "No valid landmarks found; all landmarks are marked as invalid."
-        )
+        return np.array([-1, -1, -1, -1], dtype=np.int64)
 
     x, y, w, h = cv2.boundingRect(valid_marks)
     bbox = np.array(
