@@ -1031,7 +1031,7 @@ def draw_debug_image(
                 cv2.circle(overlay, tuple(mark), 3, color.rgb, -1)
 
             if draw_boxes:
-                box = get_bbox_from_landmarks(marks, width, height)
+                box = get_bbox_from_landmarks(marks, width, height, margin=10)
                 color = HAND_COLORS[1] if ind == 0 else HAND_COLORS[2]
                 cv2.rectangle(overlay, (box[0], box[1]), (box[2], box[3]), color.rgb, 2)
 
