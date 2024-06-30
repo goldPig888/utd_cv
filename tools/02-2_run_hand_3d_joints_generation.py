@@ -1,5 +1,6 @@
 import argparse
 import itertools
+from scipy.interpolate import CubicSpline, interp1d
 
 from _init_paths import *
 from lib.Utils import *
@@ -28,6 +29,99 @@ def runner_draw_handmarks_results(rgb_images, handmarks, serials):
         return_array=True,
     )
     return vis_image
+
+
+def complete_3d_joints_by_cubic(joints_3d, ratio=0.5):
+    def calculate_bone_lengths(joints_3d):
+        """
+        Calculate the bone lengths from the parent-child joint relationships.
+
+        Parameters:
+        - joints_3d: Observed 3D joints, shape (N, 21, 3).
+
+        Returns:
+        - Bone lengths for each joint, shape (21,).
+        """
+        bone_lengths = np.zeros(21)
+        for i in range(1, 21):  # Skip the root joint, which has no parent
+            parent_idx = HAND_JOINT_PARENTS[i]
+            if parent_idx >= 0:  # Valid parent index
+                bone_lengths[i] = np.linalg.norm(
+                    joints_3d[:, parent_idx] - joints_3d[:, i], axis=1
+                ).mean()
+        return bone_lengths
+
+    def adjust_joints_to_bone_lengths(joints_3d, bone_lengths):
+        """
+        Adjust the positions of the joints to respect the given bone lengths.
+
+        Parameters:
+        - joints_3d: Interpolated 3D joints, shape (N, 21, 3).
+        - bone_lengths: Bone lengths to enforce, shape (21,).
+        """
+        for i in range(1, 21):  # Skip the root joint
+            parent_idx = HAND_JOINT_PARENTS[i]
+            if parent_idx >= 0:  # Valid parent index
+                direction = joints_3d[:, i] - joints_3d[:, parent_idx]
+                # Normalize the direction vector
+                direction /= np.linalg.norm(direction, axis=1, keepdims=True)
+                joints_3d[:, i] = joints_3d[:, parent_idx] + direction * bone_lengths[i]
+
+    hands, N, joints, coords = joints_3d.shape
+    complete_joints = joints_3d.copy()
+    for hand in range(hands):
+        valid_frames = np.where(np.all(complete_joints[hand] != -1, axis=(1, 2)))[0]
+
+        if len(valid_frames) < int(N * ratio):
+            print(
+                f"** Not enough valid frames for interpolation for hand-{hand}. (#frames: {len(valid_frames)}/{N})"
+            )
+            continue
+
+        # Calculate average bone lengths from the first frame (assuming it's fully observed)
+        bone_lengths = calculate_bone_lengths(joints_3d[hand, valid_frames])
+
+        for joint in range(joints):
+            for coord in range(coords):
+                valid_coords = complete_joints[hand, valid_frames, joint, coord]
+                cs = CubicSpline(valid_frames, valid_coords, bc_type="clamped")
+                interpolated_coords = cs(np.arange(N))
+                complete_joints[hand, :, joint, coord] = interpolated_coords
+        # Adjust the completed joints to respect bone lengths
+        adjust_joints_to_bone_lengths(complete_joints[hand, :], bone_lengths)
+
+    return complete_joints
+
+
+def complete_3d_joints_by_linear(joints_3d):
+    hands, N, joints, coords = joints_3d.shape
+    # Loop over each hand and each joint
+    for hand in range(hands):
+        if np.all(joints_3d[hand] == -1):  # no hand detected
+            continue
+        for joint in range(joints):
+            for coord in range(coords):
+                # Extract the current sequence for the joint's coordinate
+                sequence = joints_3d[hand, :, joint, coord]
+                # Identify frames where the joint data is not missing
+                valid_frames = np.where(sequence != -1)[0]
+                # Check if there are enough points to interpolate
+                if len(valid_frames) > 1:
+                    # Extract the valid coordinates and corresponding frames
+                    valid_coords = sequence[valid_frames]
+                    # Create a spline interpolation function
+                    interp_func = interp1d(
+                        valid_frames,
+                        valid_coords,
+                        kind="linear",
+                        bounds_error=False,
+                        fill_value=(valid_coords[0], valid_coords[-1]),
+                    )
+                    # Interpolate missing points
+                    interpolated_coords = interp_func(np.arange(N))
+                    # Update the original array with interpolated values
+                    joints_3d[hand, :, joint, coord] = interpolated_coords
+    return joints_3d
 
 
 class ManoPoseSolver:
@@ -60,25 +154,21 @@ class ManoPoseSolver:
 
         camera_pairs = list(itertools.combinations(range(self._num_cameras), 2))
         hand_joints_3d = np.full((2, self._num_frames, 21, 3), -1, dtype=np.float32)
-        hand_joints_2d = np.full(
-            (2, self._num_frames, self._num_cameras, 21, 2), -1, dtype=np.int64
-        )
-        hand_joints_bbox = np.full(
-            (2, self._num_frames, self._num_cameras, 4), -1, dtype=np.int64
-        )
         for frame_id in tqdm(range(self._num_frames), ncols=60, colour="green"):
             # create candidate 3d hand joints by triangulating each pair of 2D handmarks
             for mano_side in self._mano_sides:
                 hand_ind = 0 if mano_side == "right" else 1
                 handmarks = mp_handmarks[hand_ind, frame_id]
 
-                if np.all(handmarks == -1):
+                num_valid_cameras = np.sum(np.all(handmarks != -1, axis=(1, 2)))
+                if num_valid_cameras < 4:
                     self._logger.warning(
-                        f"Frame {frame_id:06d}: No hand detected for {mano_side}."
+                        f"Frame {frame_id:06d}: Less than 4 cameras detected for {mano_side}."
                     )
                     continue
 
                 best_pts_3d = []
+
                 for jt_idx in range(21):
                     marks = handmarks[:, jt_idx]
                     pts_3d = []
@@ -104,33 +194,45 @@ class ManoPoseSolver:
                 best_pts_3d = np.stack(
                     best_pts_3d, axis=0, dtype=np.float32
                 )  # (num_joints, 3)
-                best_pts_2d = self._points_3d_to_2d(
-                    best_pts_3d, self._M
-                )  # (num_cameras, num_joints, 2)
-                best_pts_bbox = np.array(
-                    [
-                        get_bbox_from_landmarks(pts_2d, self._width, self._height, 10)
-                        for pts_2d in best_pts_2d
-                    ]
-                )  # (num_cameras, 4)
 
                 # save 3D hand joints
                 hand_joints_3d[hand_ind, frame_id] = best_pts_3d
-                hand_joints_2d[hand_ind, frame_id] = best_pts_2d
-                hand_joints_bbox[hand_ind, frame_id] = best_pts_bbox
 
         hand_joints_3d = hand_joints_3d.astype(np.float32)
-        hand_joints_2d = hand_joints_2d.astype(np.int64)
-        hand_joints_bbox = hand_joints_bbox.astype(np.int64)
+
+        # complete 3D hand joints by interpolation
+        # hand_joints_3d = complete_3d_joints_by_cubic(hand_joints_3d)
+        hand_joints_3d = complete_3d_joints_by_linear(hand_joints_3d)
+
+        # generate 2D hand joints projection for each camera
+        hand_joints_2d = np.stack(
+            [
+                [
+                    self._points_3d_to_2d(hand_joints_3d[hand_ind, frame_id], self._M)
+                    for frame_id in range(self._num_frames)
+                ]
+                for hand_ind in range(2)
+            ],
+            axis=0,
+        ).astype(np.int64)
+
+        # generate 2D hand joints bbox for each camera
+        hand_joints_bbox = np.stack(
+            [
+                [
+                    [
+                        get_bbox_from_landmarks(pts_2d, self._width, self._height, 10)
+                        for pts_2d in hand_joints_2d[hand_ind, frame_id]
+                    ]
+                    for frame_id in range(self._num_frames)
+                ]
+                for hand_ind in range(2)
+            ],
+            axis=0,
+        ).astype(np.int64)
 
         # save 3D hand joints
-        np.savez_compressed(
-            self._hand_detection_folder / "hand_joints_3d.npz",
-            **{
-                self._serials[hand_ind]: hand_joints_3d[hand_ind]
-                for hand_ind in range(2)
-            },
-        )
+        np.save(self._hand_detection_folder / "hand_joints_3d.npy", hand_joints_3d)
 
         # save 2D hand joints
         np.savez_compressed(
@@ -226,10 +328,7 @@ class ManoPoseSolver:
         best_inliers = 0
         best_loss = 0.0
 
-        # for combination in self._get_all_combinations(len(pts_3d)):
         for pt_3d in pts_3d:
-            # pts = pts_3d[list(combination)]
-            # pt_3d = np.mean(pts, axis=0)
             loss = self._projection_loss(pt_3d, marks)
             inliers = np.sum(loss < thresh)
             if inliers > best_inliers:
@@ -307,9 +406,6 @@ if __name__ == "__main__":
     args = args_parser()
     sequence_folder = args.sequence_folder
     debug = args.debug
-
-    sequence_folder = PROJ_ROOT / "data/recordings/ida_20240617_101133"
-    debug = True
 
     estimator = ManoPoseSolver(sequence_folder=sequence_folder, debug=debug)
     estimator.run_hand_joints_3d_estimation()
