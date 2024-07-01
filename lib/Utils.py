@@ -566,6 +566,7 @@ def display_images(
     save_path=None,
     return_array=False,
 ):
+    img_array = None
     num_images = len(images)
     num_cols = min(num_images, max_cols)
     num_rows = (
@@ -600,14 +601,10 @@ def display_images(
 
         plt.tight_layout()
 
-        img_array = None
         if return_array:
             canvas = FigureCanvasAgg(fig)
             canvas.draw()
-            width, height = fig.get_size_inches() * fig.get_dpi()
-            img_array = np.frombuffer(canvas.tostring_rgb(), dtype="uint8").reshape(
-                int(height), int(width), 3
-            )
+            img_array = np.array(canvas.renderer.buffer_rgba())[:, :, :3]
 
         if save_path:
             plt.savefig(str(save_path))
