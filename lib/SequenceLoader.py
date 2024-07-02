@@ -14,7 +14,7 @@ class SequenceLoader:
     ) -> None:
         self._data_folder = Path(sequence_folder).resolve()
         self._calib_folder = self._data_folder.parent.parent / "calibration"
-        self._model_folder = self._data_folder.parent.parent / "models"
+        self._models_folder = self._data_folder.parent.parent / "models"
         self._device = device
         self._load_mano = load_mano
         self._load_object = load_object
@@ -406,25 +406,11 @@ class SequenceLoader:
 
     @property
     def object_textured_mesh_files(self):
-        return (
-            [
-                self._calib_folder / "objects" / oid / f"textured_mesh.obj"
-                for oid in self._object_ids
-            ]
-            if self._load_object
-            else None
-        )
+        return str(self._models_folder / self._object_ids / f"textured_mesh.obj")
 
     @property
     def object_cleaned_mesh_files(self):
-        return (
-            [
-                self._calib_folder / "objects" / oid / f"cleaned_mesh_10000.obj"
-                for oid in self._object_ids
-            ]
-            if self._load_object
-            else None
-        )
+        return str(self._models_folder / self._object_ids / f"cleaned_mesh_10000.obj")
 
     @property
     def pcd_points(self):

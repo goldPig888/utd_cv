@@ -29,6 +29,8 @@ from .ManoInfo import *
 PROJ_ROOT = Path(__file__).resolve().parents[1]  # Get the project root directory
 EXTERNAL_ROOT = PROJ_ROOT / "externals"
 
+cvcam_in_glcam = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+
 
 def add_path(path):
     if str(path) not in sys.path:
@@ -166,6 +168,10 @@ def mat_to_rvt(mat_4x4):
     Raises:
         ValueError: If the input does not have the expected shape or dimensions.
     """
+
+    if isinstance(mat_4x4, list):
+        mat_4x4 = np.array(mat_4x4)
+
     if not isinstance(mat_4x4, np.ndarray) or mat_4x4.shape[-2:] != (4, 4):
         raise ValueError("Input must be a numpy array with shape (4, 4) or (N, 4, 4).")
 
@@ -254,6 +260,9 @@ def quat_to_rvt(quat):
     Raises:
         ValueError: If the input does not have the last dimension size of 7.
     """
+    if isinstance(quat, list):
+        quat = np.array(quat)
+
     if quat.shape[-1] != 7:
         raise ValueError("Input must have the last dimension size of 7.")
 
@@ -1050,3 +1059,86 @@ def draw_debug_image(
                 )
 
     return overlay
+
+
+class KalmanFilter:
+    def __init__(self, dim_x, dim_z):
+        self.dim_x = dim_x
+        self.dim_z = dim_z
+        self.x = torch.zeros(dim_x, dtype=torch.float32)
+        self.P = torch.eye(dim_x, dtype=torch.float32) * 10.0
+        self.Q = torch.eye(dim_x, dtype=torch.float32) * 0.1
+        self.R = torch.eye(dim_z, dtype=torch.float32) * 0.1
+        self.F = torch.eye(dim_x, dtype=torch.float32)
+        self.H = torch.eye(dim_z, dtype=torch.float32)
+
+    def predict(self):
+        self.x = torch.matmul(self.F, self.x)
+        self.P = torch.matmul(torch.matmul(self.F, self.P), self.F.T) + self.Q
+
+    def update(self, z):
+        z = torch.tensor(z, dtype=torch.float32)
+        y = z - torch.matmul(self.H, self.x)
+        S = torch.matmul(self.H, torch.matmul(self.P, self.H.T)) + self.R
+        K = torch.matmul(torch.matmul(self.P, self.H.T), torch.inverse(S))
+        self.x = self.x + torch.matmul(K, y)
+        I = torch.eye(self.dim_x, dtype=torch.float32)
+        self.P = torch.matmul((I - torch.matmul(K, self.H)), self.P)
+
+
+def interpolate_missing_poses_kalman(poses):
+    poses = torch.tensor(poses, dtype=torch.float32)
+    N, D = poses.shape
+    assert D == 6, "Each pose should have 6 values: (rx, ry, rz, x, y, z)"
+
+    kf = KalmanFilter(dim_x=D, dim_z=D)
+
+    valid_indices = torch.where(~torch.all(poses == -1, dim=1))[0]
+    first_valid_index = valid_indices[0]
+    kf.x = poses[first_valid_index]
+
+    interpolated_poses = []
+
+    for i in range(N):
+        if torch.all(poses[i] == -1):
+            kf.predict()
+        else:
+            kf.update(poses[i])
+
+        interpolated_poses.append(kf.x.clone().detach().numpy())
+
+    return np.array(interpolated_poses)
+
+
+def cubic_spline_interpolation(poses):
+    import torch.nn.functional as F
+
+    poses = torch.tensor(poses, dtype=torch.float32)
+    N, D = poses.shape
+    assert D == 6, "Each pose should have 6 values: (rx, ry, rz, x, y, z)"
+
+    valid_indices = torch.where(~torch.all(poses == -1, dim=1))[0]
+    invalid_indices = torch.where(torch.all(poses == -1, dim=1))[0]
+
+    for i in range(D):
+        valid_values = poses[valid_indices, i]
+        cubic_interp = torch.interp1d(valid_indices.float(), valid_values, kind="cubic")
+        poses[invalid_indices, i] = cubic_interp(invalid_indices.float())
+
+    return poses.numpy()
+
+
+def linear_interpolation(poses):
+    poses = torch.tensor(poses, dtype=torch.float32)
+    N, D = poses.shape
+    assert D == 6, "Each pose should have 6 values: (rx, ry, rz, x, y, z)"
+
+    valid_indices = torch.where(~torch.all(poses == -1, dim=1))[0]
+    invalid_indices = torch.where(torch.all(poses == -1, dim=1))[0]
+
+    for i in range(D):
+        valid_values = poses[valid_indices, i]
+        interp_func = torch.interp1d(valid_indices.float(), valid_values)
+        poses[invalid_indices, i] = interp_func(invalid_indices.float())
+
+    return poses.numpy()
