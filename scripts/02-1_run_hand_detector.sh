@@ -9,7 +9,6 @@ source ${CURR_DIR}/00_config.sh
 # Path to the script that extracts the rosbag
 SCRIPT_FILE="${PROJ_DIR}/tools/02-1_run_hand_detector.py"
 
-# Find all rosbags in the data/rosbags directory
 ALL_SEQUENCES=(
 data/recordings/ida_20240617_101133
 data/recordings/isaac_20240617_102035
