@@ -13,8 +13,14 @@ MP_CONFIG = {
 }
 
 
-class HandDetector:
+class MPHandDetector:
     def __init__(self, config=MP_CONFIG):
+        """
+        Initializes the MPHandDetector object with the given configuration.
+
+        Args:
+            config (dict): Configuration dictionary.
+        """
         self._config = config
         self._device = config.get("device", "cpu")
         self._mode = config.get("running_mode", "image")
@@ -24,6 +30,12 @@ class HandDetector:
         self._detector = self._init_mp_hand_detector()
 
     def _init_mp_hand_detector(self):
+        """
+        Initializes the MediaPipe hand detector with the provided options.
+
+        Returns:
+            mp.tasks.vision.HandLandmarker: Initialized hand landmarker.
+        """
         base_options = mp.tasks.BaseOptions(
             model_asset_path=str(PROJ_ROOT / "config/mediapipe/hand_landmarker.task"),
             delegate=(
@@ -68,30 +80,36 @@ class HandDetector:
         hand_marks = []
         hand_sides = []
         hand_scores = []
-        H, W, _ = rgb_image.shape
-        mp_image = mp.Image(data=rgb_image.copy(), image_format=mp.ImageFormat.SRGB)
 
-        if self._mode == "image":
-            mp_result = self._detector.detect(mp_image)
-        if self._mode == "video":
-            mp_result = self._detector.detect_for_video(mp_image, self._timestamp_ms)
-            self._timestamp_ms += self._delta_time_ms
+        try:
+            H, W, _ = rgb_image.shape
+            mp_image = mp.Image(data=rgb_image.copy(), image_format=mp.ImageFormat.SRGB)
 
-        if mp_result.hand_landmarks:
-            hand_landmarks_list = mp_result.hand_landmarks
-            handedness_list = mp_result.handedness
-            for idx, hand_landmarks in enumerate(hand_landmarks_list):
-                marks = np.array(
-                    [
-                        normalized_to_pixel_coords(lmk.x, lmk.y)
-                        for lmk in hand_landmarks
-                    ],
-                    dtype=np.int64,
+            if self._mode == "image":
+                mp_result = self._detector.detect(mp_image)
+            if self._mode == "video":
+                mp_result = self._detector.detect_for_video(
+                    mp_image, self._timestamp_ms
                 )
-                side = handedness_list[idx][0].category_name.lower()
-                score = handedness_list[idx][0].score
-                hand_marks.append(marks)
-                hand_sides.append(side)
-                hand_scores.append(score)
+                self._timestamp_ms += self._delta_time_ms
+
+            if mp_result.hand_landmarks:
+                hand_landmarks_list = mp_result.hand_landmarks
+                handedness_list = mp_result.handedness
+                for idx, hand_landmarks in enumerate(hand_landmarks_list):
+                    marks = np.array(
+                        [
+                            normalized_to_pixel_coords(lmk.x, lmk.y)
+                            for lmk in hand_landmarks
+                        ],
+                        dtype=np.int64,
+                    )
+                    side = handedness_list[idx][0].category_name.lower()
+                    score = handedness_list[idx][0].score
+                    hand_marks.append(marks)
+                    hand_sides.append(side)
+                    hand_scores.append(score)
+        except Exception as e:
+            print(f"Error in detect_one: {e}")
 
         return hand_marks, hand_sides, hand_scores

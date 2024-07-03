@@ -1,7 +1,3 @@
-import argparse
-import itertools
-from scipy.interpolate import CubicSpline, interp1d
-
 from _init_paths import *
 from lib.Utils import *
 from lib.SequenceLoader import SequenceLoader
@@ -307,18 +303,16 @@ def complete_3d_joints_by_linear(joints_3d):
     return joints_3d
 
 
-class ManoPoseSolver:
-    def __init__(self, sequence_folder, debug=False) -> None:
+class ManoJointsEstimator:
+    def __init__(self, sequence_folder) -> None:
         self._data_folder = Path(sequence_folder).resolve()
-        self._logger = get_logger(
-            log_level="DEBUG" if debug else "INFO", log_name="ManoPoseSolver"
-        )
+        self._logger = get_logger("ManoJointsEstimator")
         self._save_folder = self._data_folder / "processed" / "hand_detection"
         self._save_folder.mkdir(parents=True, exist_ok=True)
         self._vis_folder = self._save_folder / "vis"
         self._vis_folder.mkdir(parents=True, exist_ok=True)
 
-        # load variables from sequence loader
+        # Load variables from sequence loader
         self._loader = SequenceLoader(sequence_folder)
         self._serials = self._loader.serials
         self._master = self._loader.master_serial
@@ -329,11 +323,9 @@ class ManoPoseSolver:
         self._M = self._loader.M2world.cpu().numpy()
         self._num_cameras = len(self._serials)
 
-    def run(self):
-        # Run RANSAC 3D hand joints estimation
-        self._run_hand_joints_3d_estimation()
+    def run_hand_joints_3d_estimation(self):
+        start_time = time.time()
 
-    def _run_hand_joints_3d_estimation(self):
         self._logger.info(">>>>>>>>>> Running Hand 3D Joints Estimation <<<<<<<<<<")
         mp_handmarks_file = self._save_folder / "mp_handmarks_results.npz"
         if not mp_handmarks_file.exists():
@@ -342,14 +334,14 @@ class ManoPoseSolver:
             )
             return
 
-        joints_3d_file = self._save_folder / "hand_joints_3d_raw.npy"
+        joints_3d_file = self._save_folder / "mp_hand_joints_3d_raw.npy"
         if joints_3d_file.exists():
             self._logger.info(
                 "    ** Hand 3D Joints Estimation Results already exist!!!"
             )
             hand_joints_3d = np.load(joints_3d_file)
         else:
-            # load mp_handmarks
+            # Load mp_handmarks
             mp_handmarks = np.load(mp_handmarks_file)
             mp_handmarks = np.stack(
                 [mp_handmarks[s] for s in self._serials], axis=2
@@ -391,6 +383,9 @@ class ManoPoseSolver:
 
         # hand_joints_3d = complete_3d_joints_by_cubic(hand_joints_3d, ratio=0.8)
         hand_joints_3d = complete_3d_joints_by_linear(hand_joints_3d)
+        np.save(
+            self._save_folder / "mp_hand_joints_3d_interpolated.npy", hand_joints_3d
+        )
 
         hand_joints_2d = np.stack(
             [
@@ -402,7 +397,7 @@ class ManoPoseSolver:
             ],
             axis=0,
         ).astype(np.int64)
-        tqdm.write(f"hand_joints_2d: {hand_joints_2d.shape}")
+        self._logger.info(f"hand_joints_2d: {hand_joints_2d.shape}")
 
         hand_joints_bbox = np.stack(
             [
@@ -417,33 +412,31 @@ class ManoPoseSolver:
             ],
             axis=0,
         ).astype(np.int64)
-        tqdm.write(f"hand_joints_bbox: {hand_joints_bbox.shape}")
+        self._logger.info(f"hand_joints_bbox: {hand_joints_bbox.shape}")
 
-        # save 2D hand joints
+        # Save 2D hand joints
         np.savez_compressed(
-            self._save_folder / "hand_joints_3d_projection.npz",
+            self._save_folder / "mp_hand_joints_3d_projection.npz",
             **{
                 self._serials[cam_idx]: hand_joints_2d[:, :, cam_idx]
                 for cam_idx in range(self._num_cameras)
             },
         )
 
-        # save 2D hand joints bbox
+        # Save 2D hand joints bbox
         np.savez_compressed(
-            self._save_folder / "hand_joints_3d_bbox.npz",
+            self._save_folder / "mp_hand_joints_3d_bbox.npz",
             **{
                 self._serials[cam_idx]: hand_joints_bbox[:, :, cam_idx]
                 for cam_idx in range(self._num_cameras)
             },
         )
 
-        # draw visualization results
-        tqdm.write("Drawing visualization results...")
-        tqdm.write("    ** Generating vis images...")
+        # Draw visualization results
+        self._logger.info("Generating vis images...")
         vis_images = [None] * self._num_frames
         tqbar = tqdm(total=self._num_frames, ncols=60, colour="green")
         with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
-            tqdm.write("    ** Generating vis images for hand joints 3D...")
             futures = {
                 executor.submit(
                     runner_draw_handmarks_results,
@@ -460,8 +453,8 @@ class ManoPoseSolver:
             del futures
         tqbar.close()
 
-        tqdm.write("    ** Saving vis images...")
-        save_vis_folder = self._save_folder / "vis" / "hand_joints_3d"
+        self._logger.info("Saving vis images...")
+        save_vis_folder = self._save_folder / "vis" / "mp_hand_joints_3d"
         save_vis_folder.mkdir(parents=True, exist_ok=True)
         tqbar = tqdm(total=self._num_frames, ncols=60, colour="green")
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -480,20 +473,23 @@ class ManoPoseSolver:
             del futures
         tqbar.close()
 
-        tqdm.write("    ** Saving vis video...")
+        self._logger.info("Saving vis video...")
         create_video_from_rgb_images(
-            self._save_folder / "vis" / "hand_joints_3d.mp4",
+            self._save_folder / "vis" / f"{save_vis_folder.name}.mp4",
             vis_images,
             fps=30,
         )
 
-        self._logger.info("Hand joints 3D estimation done.")
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        self._logger.info(f">>>>>>>>>> Done!!! ({elapsed_time:.2f} seconds)<<<<<<<<<<")
 
     def _point_3d_to_2d(self, point_3d, M):
         point_2d = M @ np.append(point_3d, 1)
         point_2d /= point_2d[2]
         point_2d = point_2d[:2].astype(np.int64)
-        # check if the point is within the image
+        # Check if the point is within the image
         if (
             point_2d[0] < 0
             or point_2d[0] >= self._width
@@ -509,33 +505,20 @@ class ManoPoseSolver:
             if np.any(p_3d == -1):
                 continue
             tmp_pts_2d = [self._point_3d_to_2d(p_3d, M) for M in Ms]
-            # replace invalid points with -1
+            # Replace invalid points with -1
             points_2d[:, i] = [
                 p_2d if p_2d is not None else np.array([-1, -1]) for p_2d in tmp_pts_2d
             ]
         return points_2d.astype(np.int64)
 
 
-def args_parser():
-    parser = argparse.ArgumentParser(description="Hand Detection")
-    parser.add_argument(
-        "--sequence_folder",
-        required=True,
-        help="sequence folder",
-        type=str,
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="debug mode",
-    )
-    return parser.parse_args()
-
-
 if __name__ == "__main__":
-    args = args_parser()
+    parser = argparse.ArgumentParser(description="MP Hand 3D Joints Estimation")
+    parser.add_argument(
+        "--sequence_folder", type=str, required=True, help="Path to the sequence folder"
+    )
+    args = parser.parse_args()
     sequence_folder = args.sequence_folder
-    debug = args.debug
 
-    pose_estimator = ManoPoseSolver(sequence_folder=sequence_folder, debug=debug)
-    pose_estimator.run()
+    pose_estimator = ManoJointsEstimator(sequence_folder)
+    pose_estimator.run_hand_joints_3d_estimation()

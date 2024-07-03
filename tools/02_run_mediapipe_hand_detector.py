@@ -1,8 +1,6 @@
-import argparse
-
 from _init_paths import *
 from lib.Utils import *
-from lib.HandDetector import HandDetector
+from lib.MPHandDetector import MPHandDetector
 from lib.SequenceLoader import SequenceLoader
 
 
@@ -18,50 +16,76 @@ MP_CONFIG = {
 
 
 def runner_draw_handmarks_results(rgb_images, handmarks, serials):
-    vis_image = display_images(
-        images=[
-            draw_debug_image(
-                rgb_image,
-                hand_marks=handmarks[idx],
-                draw_boxes=True,
-                draw_hand_sides=True,
-            )
-            for idx, rgb_image in enumerate(rgb_images)
-        ],
-        names=serials,
-        return_array=True,
-    )
-    return vis_image
+    """
+    Draws hand landmarks on a list of RGB images and displays them with their respective serials.
+
+    Args:
+        rgb_images (list of np.ndarray): List of RGB images.
+        handmarks (list of list): List of hand landmarks for each image.
+        serials (list of str): List of serial names for each image.
+
+    Returns:
+        np.ndarray: Array of images with drawn hand landmarks and other debug information.
+    """
+    if not (len(rgb_images) == len(handmarks) == len(serials)):
+        raise ValueError(
+            "The length of rgb_images, handmarks, and serials must be the same."
+        )
+
+    vis_images = [
+        draw_debug_image(
+            rgb_image,
+            hand_marks=handmarks[idx],
+            draw_boxes=True,
+            draw_hand_sides=True,
+        )
+        for idx, rgb_image in enumerate(rgb_images)
+    ]
+
+    vis_images = display_images(images=vis_images, names=serials, return_array=True)
+    return vis_images
 
 
 def runner_mp_hand_detector(rgb_images, mp_config):
-    detector = HandDetector(mp_config)
-    marks_result = np.full((len(rgb_images), 2, 21, 2), -1, dtype=np.int64)
-    for frame_id in range(len(rgb_images)):
+    """
+    Runs hand detection on a series of RGB images using the provided MediaPipe configuration.
+
+    Args:
+        rgb_images (list of np.ndarray): List of RGB images.
+        mp_config (dict): Configuration dictionary for the MediaPipe hand detector.
+
+    Returns:
+        np.ndarray: Array of hand marks with shape (num_frames, 2, 21, 2).
+                    The marks are filled with -1 where hands are not detected.
+    """
+    detector = MPHandDetector(mp_config)
+    num_frames = len(rgb_images)
+    marks_result = np.full((num_frames, 2, 21, 2), -1, dtype=np.int64)
+
+    for frame_id in range(num_frames):
         hand_marks, hand_sides, hand_scores = detector.detect_one(rgb_images[frame_id])
 
         if hand_sides:
-            # update hand sides if there are two same hand sides
+            # Ensure there are no two same hand sides
             if len(hand_sides) == 2 and hand_sides[0] == hand_sides[1]:
                 if hand_scores[0] >= hand_scores[1]:
                     hand_sides[1] = "right" if hand_sides[0] == "left" else "left"
                 else:
                     hand_sides[0] = "right" if hand_sides[1] == "left" else "left"
-            # update hand marks result
+
+            # Update hand marks result
             for i, hand_side in enumerate(hand_sides):
-                if hand_side == "right":
-                    marks_result[frame_id][0] = hand_marks[i]
-                if hand_side == "left":
-                    marks_result[frame_id][1] = hand_marks[i]
+                side_index = 0 if hand_side == "right" else 1
+                marks_result[frame_id][side_index] = hand_marks[i]
 
-    marks_result = marks_result.astype(np.int64)
-
-    return marks_result
+    return marks_result.astype(np.int64)
 
 
 def main():
+    start_time = time.time()  # Record the start time
+
     device = MP_CONFIG["device"]
-    logger = get_logger(log_level="DEBUG", log_name="HandDetector")
+    logger = get_logger(log_level="DEBUG", log_name="MPHandDetector")
 
     loader = SequenceLoader(sequence_folder, device=device)
     serials = loader.serials
@@ -79,7 +103,10 @@ def main():
     - Mano Sides: {mano_sides}"""
     )
 
+    # Initialize results dictionary
     mp_handmarks = {serial: None for serial in serials}
+
+    # Process each serial using multiprocessing
     tqbar = tqdm(total=len(serials), ncols=60, colour="green")
     with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
         futures = {
@@ -92,13 +119,10 @@ def main():
             ): serial
             for serial in serials
         }
-
         for future in concurrent.futures.as_completed(futures):
             mp_handmarks[futures[future]] = future.result()
             tqbar.update()
             tqbar.refresh()
-
-        del futures
     tqbar.close()
 
     logger.info("*** Updating Hand Detection Results with 'mano_sides' ***")
@@ -122,82 +146,17 @@ def main():
                         ][0]
                     mp_handmarks[serial][frame_id][0] = -1
 
-    # logger.info("*** Saving Hand Detection Results ***")
-    # for serial in serials:
-    #     tqdm.write(f"  - Saving hand detection results for {serial}")
-
-    #     # Make folder to save hand detection results
-    #     save_folder = sequence_folder / "processed" / "hand_detection" / serial
-    #     make_clean_folder(save_folder)
-
-    #     # Save hand detection results
-    #     tqdm.write("    ** Saving Handmarks...")
-    #     tqbar = tqdm(total=num_frames, ncols=60, colour="green")
-    #     with concurrent.futures.ThreadPoolExecutor() as executor:
-    #         futures = {
-    #             executor.submit(
-    #                 np.save,
-    #                 save_folder / f"handmarks_{frame_id:06d}.npy",
-    #                 mp_handmarks[serial][frame_id],
-    #             ): frame_id
-    #             for frame_id in range(num_frames)
-    #         }
-    #         for future in concurrent.futures.as_completed(futures):
-    #             future.result()
-    #             tqbar.update()
-    #             tqbar.refresh()
-    #         del futures
-    #     tqbar.close()
-
-    #     tqdm.write(f"    ** Generating vis images...")
-    #     tqbar = tqdm(total=num_frames, ncols=60, colour="green")
-    #     vis_images = [None] * num_frames
-    #     with concurrent.futures.ThreadPoolExecutor() as executor:
-    #         futures = {
-    #             executor.submit(
-    #                 draw_debug_image,
-    #                 loader.get_rgb_image(frame_id, serial),
-    #                 hand_marks=mp_handmarks[serial][frame_id],
-    #                 draw_boxes=True,
-    #                 draw_hand_sides=True,
-    #             ): frame_id
-    #             for frame_id in range(num_frames)
-    #         }
-    #         for future in concurrent.futures.as_completed(futures):
-    #             vis_images[futures[future]] = future.result()
-    #             tqbar.update()
-    #             tqbar.refresh()
-    #         del futures
-    #     tqbar.close()
-
-    #     tqdm.write(f"    ** Saving vis images...")
-    #     tqbar = tqdm(total=num_frames, ncols=60, colour="green")
-    #     with concurrent.futures.ThreadPoolExecutor() as executor:
-    #         futures = {
-    #             executor.submit(
-    #                 write_rgb_image,
-    #                 save_folder / f"vis_{frame_id:06d}.png",
-    #                 vis_images[frame_id],
-    #             ): frame_id
-    #             for frame_id in range(num_frames)
-    #         }
-    #         for future in concurrent.futures.as_completed(futures):
-    #             future.result()
-    #             tqbar.update()
-    #             tqbar.refresh()
-    #         del futures
-    #     tqbar.close()
-
     logger.info("*** Saving Hand Detection Results ***")
     save_folder = sequence_folder / "processed" / "hand_detection"
     save_folder.mkdir(parents=True, exist_ok=True)
+
     # swap axis to (2, num_frames, 21, 2)
     for serial in serials:
         mp_handmarks[serial] = np.swapaxes(mp_handmarks[serial], 0, 1).astype(np.int64)
+
     np.savez_compressed(save_folder / "mp_handmarks_results.npz", **mp_handmarks)
 
     logger.info("*** Generating Hand Detection Visualizations ***")
-    tqdm.write("  - Generating vis images...")
     tqbar = tqdm(total=num_frames, ncols=60, colour="green")
     vis_images = [None] * num_frames
     with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
@@ -214,12 +173,12 @@ def main():
             vis_images[futures[future]] = future.result()
             tqbar.update()
             tqbar.refresh()
-        del futures
     tqbar.close()
 
-    tqdm.write("  - Saving vis images...")
+    logger.info("*** Saving Visualization Images ***")
     save_vis_folder = save_folder / "vis" / "mp_handmarks"
     save_vis_folder.mkdir(parents=True, exist_ok=True)
+
     tqbar = tqdm(total=num_frames, ncols=60, colour="green")
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = {
@@ -234,30 +193,25 @@ def main():
             future.result()
             tqbar.update()
             tqbar.refresh()
-        del futures
     tqbar.close()
 
-    tqdm.write("  - Creating vis video...")
+    logger.info("*** Creating Visualization Video ***")
     create_video_from_rgb_images(
         save_folder / "vis" / "mp_handmarks.mp4", vis_images, fps=30
     )
 
-    logger.info(">>>>>>>>>> Hand Detection Completed <<<<<<<<<<")
+    end_time = time.time()  # Record the end time
+    elapsed_time = end_time - start_time  # Calculate the elapsed time
 
-
-def args_parser():
-    parser = argparse.ArgumentParser(description="Hand Detection")
-    parser.add_argument(
-        "--sequence_folder",
-        type=str,
-        required=True,
-        help="Path to the sequence folder, python <python_file> --sequence_folder <path_to_sequence_folder>",
-    )
-    return parser.parse_args()
+    logger.info(f">>>>>>>>>> Done!!! ({elapsed_time:.2f} seconds) <<<<<<<<<<")
 
 
 if __name__ == "__main__":
-    args = args_parser()
+    parser = argparse.ArgumentParser(description="MediaPipe Hand Detection")
+    parser.add_argument(
+        "--sequence_folder", type=str, required=True, help="Path to the sequence folder"
+    )
+    args = parser.parse_args()
     sequence_folder = Path(args.sequence_folder).resolve()
 
     main()

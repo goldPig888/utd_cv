@@ -8,8 +8,6 @@ def add_path(path):
 
 
 # Add PROJ_ROOT to sys.path
-PROJ_ROOT = Path(__file__).resolve().parents[1]
+PROJ_ROOT = Path(__file__).resolve().parent.parent
 
 add_path(PROJ_ROOT)
-
-from lib.HandDetector import HandDetector

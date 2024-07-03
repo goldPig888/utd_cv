@@ -17,15 +17,13 @@ try:
 except RuntimeError:
     pass
 
-logger = get_logger("FoundationPoseMerger")
-
 
 def get_best_fd_pose(
     pose_folder,
     frame_id,
     serials,
     cam_RTs,
-    object_ids,
+    object_id,
     iterations=500,
     lr=0.001,
     rot_threshold=10,
@@ -127,7 +125,7 @@ def get_best_fd_pose(
     best_fd_pose = np.array([-1, -1, -1, -1, -1, -1, -1], dtype=np.float32)
 
     for serial in serials:
-        pose_file = pose_folder / f"ob_in_cam/{object_ids}/{serial}/{frame_id:06d}.txt"
+        pose_file = pose_folder / f"ob_in_cam/{object_id}/{serial}/{frame_id:06d}.txt"
         if not pose_file.exists():
             continue
 
@@ -377,6 +375,8 @@ def get_rendered_image(rgb_images, object_mesh, object_pose, cam_Ks, cam_RTs, se
 
 
 def main():
+    start_time = time.time()
+
     fd_pose_folder = sequence_folder / "processed/foundationpose"
 
     logger.info("  - Merging foundation poses by RANSAC...")
@@ -386,22 +386,6 @@ def main():
         best_fd_poses = np.load(save_fd_poses_merged_file)
     else:
         best_fd_poses = [None] * num_frames
-        # for frame_id in range(num_frames):
-        #     best_fd_poses[frame_id] = get_best_fd_pose(
-        #         fd_pose_folder,
-        #         frame_id,
-        #         serials,
-        #         cam_RTs,
-        #         object_ids,
-        #         lr=0.001,
-        #         iterations=300,
-        #         rot_threshold=1.5,  # radians
-        #         # iterations=300,
-        #         # rot_threshold=0.3,  # radians
-        #         tran_threshold=0.01,  # meters
-        #     )
-        #     exit()
-
         tqbar = tqdm(total=num_frames, ncols=80, colour="green")
         with concurrent.futures.ProcessPoolExecutor(max_workers=8) as executor:
             futures = {
@@ -411,7 +395,7 @@ def main():
                     frame_id,
                     serials,
                     cam_RTs,
-                    object_ids,
+                    object_id,
                     lr=0.001,
                     iterations=150,
                     rot_threshold=0.03,  # radians
@@ -483,21 +467,24 @@ def main():
 
     logger.info("  - Saving vis video...")
     create_video_from_rgb_images(
-        fd_pose_folder / "fd_poses_merged.mp4",
-        vis_images,
-        fps=30,
+        fd_pose_folder / "fd_poses_merged.mp4", vis_images, fps=30
     )
 
-    del vis_images
+    end_time = time.time()
+    elapsed_time = end_time - start_time
 
-    logger.info(">>>>>>>>>> Done!!! <<<<<<<<<<")
+    logger.info(f">>>>>>>>>> Done!!! ({elapsed_time:.2f} seconds)<<<<<<<<<<")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sequence_folder", type=str, required=True)
+    parser.add_argument(
+        "--sequence_folder", type=str, required=True, help="Path to the sequence folder"
+    )
     args = parser.parse_args()
     sequence_folder = Path(args.sequence_folder).resolve()
+
+    logger = get_logger("FoundationPoseMerger")
 
     loader = SequenceLoader(sequence_folder)
     width = loader.width
@@ -506,7 +493,7 @@ if __name__ == "__main__":
     num_frames = loader.num_frames
     cam_Ks = loader.Ks.cpu().numpy()
     cam_RTs = loader.extrinsics2world.cpu().numpy()
-    object_ids = loader.object_ids
-    object_mesh = trimesh.load_mesh(loader.object_textured_mesh_files)
+    object_id = loader.object_id
+    object_mesh = trimesh.load_mesh(loader.object_textured_mesh_file, process=False)
 
     main()

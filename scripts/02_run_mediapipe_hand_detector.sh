@@ -4,10 +4,10 @@
 
 
 CURR_DIR=$(realpath $( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd ))
-source ${CURR_DIR}/00_config.sh
+PROJ_DIR=$(dirname ${CURR_DIR})
 
 # Path to the script that extracts the rosbag
-SCRIPT_FILE="${PROJ_DIR}/tools/02-2_run_hand_3d_joints_generation_torch.py"
+SCRIPT_FILE="${PROJ_DIR}/tools/02_run_mediapipe_hand_detector.py"
 
 ALL_SEQUENCES=(
 data/recordings/ida_20240617_101133

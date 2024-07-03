@@ -1,21 +1,24 @@
+import os
+
+os.environ["PYOPENGL_PLATFORM"] = "egl"
+
+import shutil, itertools, sys, json, math, time
+from typing import List, Tuple, Dict, Any, Union
 from pathlib import Path
-import shutil
-import json
-import math
-import sys
-import av
 import numpy as np
-import torch
 from scipy.spatial.transform import Rotation as R
+from scipy.interpolate import CubicSpline, interp1d
 import cv2
+import av
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg
+import trimesh
+import pyrender
 import concurrent.futures
 import multiprocessing
-import time
-from typing import List, Tuple, Dict, Any
 from tqdm import tqdm
-
+import torch
+import argparse
 
 from .Colors import (
     OBJ_CLASS_COLORS,
@@ -26,7 +29,7 @@ from .Colors import (
 )
 from .ManoInfo import *
 
-PROJ_ROOT = Path(__file__).resolve().parents[1]  # Get the project root directory
+PROJ_ROOT = Path(__file__).resolve().parents[1]
 EXTERNAL_ROOT = PROJ_ROOT / "externals"
 
 cvcam_in_glcam = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
@@ -116,8 +119,8 @@ def rvt_to_quat(rvt):
     r = R.from_rotvec(rv)
     q = r.as_quat()  # this will be (N, 4) if rv is (N, 3), otherwise (4,)
     if q.ndim == 1:
-        return np.concatenate((q, t))  # 1D case
-    return np.concatenate((q, t), axis=-1)  # 2D case
+        return np.concatenate((q, t), dtype=np.float32)  # 1D case
+    return np.concatenate((q, t), axis=-1, dtype=np.float32)  # 2D case
 
 
 def rvt_to_mat(rvt):
@@ -216,7 +219,7 @@ def mat_to_quat(mat_4x4):
     else:
         raise ValueError("Input dimension is not valid. Must be 2D or 3D.")
 
-    return np.concatenate([q, t], axis=-1).astype(np.float32)
+    return np.concatenate([q, t], axis=-1, dtype=np.float32)
 
 
 def quat_to_mat(quat):
@@ -274,26 +277,21 @@ def quat_to_rvt(quat):
     rv = r.as_rotvec()
 
     if batch_mode:
-        return np.concatenate(
-            [rv, t], axis=-1, dtype=np.float32
-        )  # Ensure that the right axis is used for batch processing
+        return np.concatenate([rv, t], axis=-1, dtype=np.float32)
     else:
-        return np.concatenate([rv, t], dtype=np.float32)  # No axis needed for 1D arrays
+        return np.concatenate([rv, t], dtype=np.float32)
 
 
 def read_rgb_image(image_path):
-    image = cv2.imread(str(image_path))
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    return image
+    return cv2.cvtColor(cv2.imread(str(image_path)), cv2.COLOR_BGR2RGB)
 
 
 def write_rgb_image(image_path, image):
-    cv2.imwrite(str(image_path), image[:, :, ::-1])
+    cv2.imwrite(str(image_path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
 
 
 def read_depth_image(image_path):
-    image = cv2.imread(str(image_path), cv2.IMREAD_ANYDEPTH)
-    return image
+    return cv2.imread(str(image_path), cv2.IMREAD_ANYDEPTH)
 
 
 def write_depth_image(image_path, image):
@@ -301,32 +299,31 @@ def write_depth_image(image_path, image):
 
 
 def read_mask_image(image_path):
-    image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
-    return image
+    return cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
 
 
 def write_mask_image(image_path, image):
     cv2.imwrite(str(image_path), image)
 
 
-def create_video_from_rgb_images(video_path, images, fps=30):
+def create_video_from_rgb_images(video_path, rgb_images, fps=30):
     """
     Create a video from a list of RGB images using H.264 codec with PyAV.
 
     Args:
         video_path (str): Path to save the output video.
-        images (list of ndarray): List of RGB images to include in the video.
+        rgb_images (list of ndarray): List of RGB images to include in the video.
         fps (int, optional): Frames per second for the video. Defaults to 30.
 
     Returns:
         None
     """
-    if not images:
+    if not rgb_images:
         raise ValueError("The images list is empty.")
 
     # Ensure all images have the same shape
-    height, width, _ = images[0].shape
-    for image in images:
+    height, width, _ = rgb_images[0].shape
+    for image in rgb_images:
         if image.shape != (height, width, 3):
             raise ValueError("All images must have the same dimensions and be RGB.")
 
@@ -339,7 +336,7 @@ def create_video_from_rgb_images(video_path, images, fps=30):
     stream.height = height
     stream.pix_fmt = "yuv420p"
 
-    for image in images:
+    for image in rgb_images:
         # Convert image from RGB to YUV420
         frame = av.VideoFrame.from_ndarray(image, format="rgb24")
         frame = frame.reformat(format="yuv420p")
@@ -412,47 +409,6 @@ def dilate_mask(mask, kernel_size=3, iterations=1):
 
     # Convert the dilated mask back to its original data type
     return dilated_mask.astype(original_dtype)
-
-
-def adjust_xyxy_bbox(bbox, width, height, margin=3):
-    """
-    Adjust bounding box coordinates with margins and boundary conditions.
-
-    Args:
-        bbox (list of int or float): Bounding box coordinates [x_min, y_min, x_max, y_max].
-        width (int): Width of the image or mask. Must be greater than 0.
-        height (int): Height of the image or mask. Must be greater than 0.
-        margin (int): Margin to be added to the bounding box. Must be non-negative.
-
-    Returns:
-        np.ndarray: Adjusted bounding box as a numpy array.
-
-    Raises:
-        ValueError: If inputs are not within the expected ranges or types.
-    """
-    if len(bbox) != 4:
-        raise ValueError("Bounding box must contain exactly four coordinates.")
-    if not all(isinstance(x, (int, float)) for x in bbox):
-        raise ValueError("Bounding box coordinates must be integers or floats.")
-    if (
-        not isinstance(width, int)
-        or not isinstance(height, int)
-        or not isinstance(margin, int)
-    ):
-        raise ValueError("Width, height, and margin must be integers.")
-    if width <= 0 or height <= 0:
-        raise ValueError("Width and height must be positive integers.")
-    if margin < 0:
-        raise ValueError("Margin must be a non-negative integer.")
-
-    # Convert bbox to integers if necessary
-    x_min, y_min, x_max, y_max = map(int, bbox)
-
-    x_min = max(0, x_min - margin)
-    y_min = max(0, y_min - margin)
-    x_max = min(width - 1, x_max + margin)
-    y_max = min(height - 1, y_max + margin)
-    return np.array([x_min, y_min, x_max, y_max], dtype=np.int64)
 
 
 def get_bbox_from_landmarks(landmarks, width, height, margin=5):
@@ -564,6 +520,47 @@ def xyxy_to_cxcywh(bbox):
     return np.stack([cx, cy, w, h], axis=-1)
 
 
+def adjust_xyxy_bbox(bbox, width, height, margin=3):
+    """
+    Adjust bounding box coordinates with margins and boundary conditions.
+
+    Args:
+        bbox (list of int or float): Bounding box coordinates [x_min, y_min, x_max, y_max].
+        width (int): Width of the image or mask. Must be greater than 0.
+        height (int): Height of the image or mask. Must be greater than 0.
+        margin (int): Margin to be added to the bounding box. Must be non-negative.
+
+    Returns:
+        np.ndarray: Adjusted bounding box as a numpy array.
+
+    Raises:
+        ValueError: If inputs are not within the expected ranges or types.
+    """
+    if len(bbox) != 4:
+        raise ValueError("Bounding box must contain exactly four coordinates.")
+    if not all(isinstance(x, (int, float)) for x in bbox):
+        raise ValueError("Bounding box coordinates must be integers or floats.")
+    if (
+        not isinstance(width, int)
+        or not isinstance(height, int)
+        or not isinstance(margin, int)
+    ):
+        raise ValueError("Width, height, and margin must be integers.")
+    if width <= 0 or height <= 0:
+        raise ValueError("Width and height must be positive integers.")
+    if margin < 0:
+        raise ValueError("Margin must be a non-negative integer.")
+
+    # Convert bbox to integers if necessary
+    x_min, y_min, x_max, y_max = map(int, bbox)
+
+    x_min = max(0, x_min - margin)
+    y_min = max(0, y_min - margin)
+    x_max = min(width - 1, x_max + margin)
+    y_max = min(height - 1, y_max + margin)
+    return np.array([x_min, y_min, x_max, y_max], dtype=np.int64)
+
+
 def display_images(
     images,
     names=None,
@@ -628,298 +625,141 @@ def display_images(
         return img_array
 
 
-def draw_hand_landmarks(image, landmarks, hand_side=None, box=None):
-    """
-    Draws hand landmarks, bones, and optional hand side text and bounding box on an image.
+# def draw_hand_landmarks(image, landmarks, hand_side=None, box=None):
+#     """
+#     Draws hand landmarks, bones, and optional hand side text and bounding box on an image.
 
-    Args:
-        image (np.ndarray): The image on which to draw the landmarks.
-        landmarks (np.ndarray): Array of hand landmarks.
-        hand_side (str, optional): Indicates 'left' or 'right' hand. Default is None.
-        box (tuple, optional): Bounding box coordinates as (x1, y1, x2, y2). Default is None.
+#     Args:
+#         image (np.ndarray): The image on which to draw the landmarks.
+#         landmarks (np.ndarray): Array of hand landmarks.
+#         hand_side (str, optional): Indicates 'left' or 'right' hand. Default is None.
+#         box (tuple, optional): Bounding box coordinates as (x1, y1, x2, y2). Default is None.
 
-    Returns:
-        np.ndarray: Image with drawn hand landmarks.
-    """
-    img = image.copy()
+#     Returns:
+#         np.ndarray: Image with drawn hand landmarks.
+#     """
+#     img = image.copy()
 
-    # Draw bones
-    for idx, bone in enumerate(HAND_BONES):
-        start, end = landmarks[bone[0]], landmarks[bone[1]]
-        if np.any(start == -1) or np.any(end == -1):
-            continue
-        color = HAND_BONE_COLORS[idx].rgb
-        cv2.line(img, tuple(start), tuple(end), color, 2)
+#     # Draw bones
+#     for idx, bone in enumerate(HAND_BONES):
+#         start, end = landmarks[bone[0]], landmarks[bone[1]]
+#         if np.any(start == -1) or np.any(end == -1):
+#             continue
+#         color = HAND_BONE_COLORS[idx].rgb
+#         cv2.line(img, tuple(start), tuple(end), color, 2)
 
-    # Draw joints
-    for idx, mark in enumerate(landmarks):
-        if np.any(mark == -1):
-            continue
-        cv2.circle(img, tuple(mark), 5, (255, 255, 255), -1)  # White base for joints
-        color = HAND_JOINT_COLORS[idx].rgb
-        cv2.circle(img, tuple(mark), 3, color, -1)
+#     # Draw joints
+#     for idx, mark in enumerate(landmarks):
+#         if np.any(mark == -1):
+#             continue
+#         cv2.circle(img, tuple(mark), 5, (255, 255, 255), -1)  # White base for joints
+#         color = HAND_JOINT_COLORS[idx].rgb
+#         cv2.circle(img, tuple(mark), 3, color, -1)
 
-    # Draw bounding box
-    if box:
-        cv2.rectangle(img, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
+#     # Draw bounding box
+#     if box:
+#         cv2.rectangle(img, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
 
-    # Draw hand side text
-    if hand_side:
-        text = hand_side.lower()
-        text_x = np.min(landmarks[:, 0])
-        text_y = np.min(landmarks[:, 1]) - 5  # Add margin to top
-        text_color = HAND_COLORS[1] if text == "right" else HAND_COLORS[2]
-        cv2.putText(
-            img,
-            text,
-            (text_x, text_y),
-            cv2.FONT_HERSHEY_DUPLEX,
-            1,
-            text_color.rgb,
-            1,
-            cv2.LINE_AA,
-        )
+#     # Draw hand side text
+#     if hand_side:
+#         text = hand_side.lower()
+#         text_x = np.min(landmarks[:, 0])
+#         text_y = np.min(landmarks[:, 1]) - 5  # Add margin to top
+#         text_color = HAND_COLORS[1] if text == "right" else HAND_COLORS[2]
+#         cv2.putText(
+#             img,
+#             text,
+#             (text_x, text_y),
+#             cv2.FONT_HERSHEY_DUPLEX,
+#             1,
+#             text_color.rgb,
+#             1,
+#             cv2.LINE_AA,
+#         )
 
-    return img
-
-
-def draw_losses_curve(
-    loss_lists,
-    labels=None,
-    title="Loss Curves",
-    xlabel="Epoch",
-    ylabel="Loss",
-    figsize=(19.2, 10.8),
-    dpi=100,
-    save_path=None,
-):
-    """
-    Plot multiple loss curves.
-
-    Args:
-        loss_lists (list of lists): List of lists, where each inner list contains loss values for different metrics.
-        labels (list of str, optional): List of labels for each loss curve. Default is None.
-        title (str): Title of the plot. Default is "Loss Curves".
-        xlabel (str): Label for the x-axis. Default is "Epoch".
-        ylabel (str): Label for the y-axis. Default is "Loss".
-        figsize (tuple, optional): Size of the figure. Default is (19.2, 10.8).
-        dpi (int, optional): Dots per inch for the figure. Default is 100.
-        save_path (str, optional): Path to save the plot. If None, the plot will be displayed. Default is None.
-
-    Returns:
-        None
-    """
-    # Create a new figure with the specified size and DPI
-    plt.figure(figsize=figsize, dpi=dpi)
-
-    # Plot each loss curve with an appropriate label
-    for i, loss_list in enumerate(loss_lists):
-        label = labels[i] if labels and i < len(labels) else f"Loss {i+1}"
-        plt.plot(loss_list, label=label)
-
-    # Set the title and labels for the plot
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-
-    # Display the legend and grid
-    plt.legend()
-    plt.grid(True)
-
-    # Save the plot to a file if save_path is provided, otherwise display it
-    if save_path:
-        plt.savefig(str(save_path), bbox_inches="tight", pad_inches=0)
-    else:
-        plt.show()
-
-    # Close the figure to free memory
-    plt.close()
+#     return img
 
 
-def draw_mask_overlay(rgb, mask, alpha=0.5, mask_color=(0, 255, 0), reduce_bg=False):
-    """
-    Draw a mask overlay on an RGB image.
-
-    Args:
-        rgb (np.ndarray): RGB image, shape (height, width, 3).
-        mask (np.ndarray): Binary mask, shape (height, width).
-        alpha (float): Transparency of the mask overlay.
-        mask_color (tuple): RGB color of the mask overlay.
-        reduce_bg (bool): If True, reduce the background intensity of the RGB image.
-
-    Returns:
-        np.ndarray: RGB image with mask overlay.
-    """
-    # Create an overlay based on whether to reduce the background
-    if reduce_bg:
-        overlay = np.zeros_like(rgb)
-    else:
-        overlay = rgb.copy()
-
-    # Apply the mask color to the overlay where the mask is true
-    overlay[mask.astype(bool)] = mask_color
-
-    # Blend the overlay with the original image
-    blended = cv2.addWeighted(overlay, alpha, rgb, 1 - alpha, 0)
-
-    return blended
-
-
-# def draw_debug_image(
-#     rgb_image,
-#     hand_mask=None,
-#     object_mask=None,
-#     prompt_points=None,
-#     prompt_labels=None,
-#     hand_marks=None,
-#     alpha=0.5,
-#     reduce_background=False,
-#     draw_boxes=False,
-#     draw_hand_sides=False,
+# def draw_losses_curve(
+#     loss_lists,
+#     labels=None,
+#     title="Loss Curves",
+#     xlabel="Epoch",
+#     ylabel="Loss",
+#     figsize=(19.2, 10.8),
+#     dpi=100,
+#     save_path=None,
 # ):
-#     height, width = rgb_image.shape[:2]
-#     overlay = np.zeros_like(rgb_image) if reduce_background else rgb_image.copy()
+#     """
+#     Plot multiple loss curves.
 
-#     # draw hand mask
-#     if hand_mask is not None:
-#         for label in np.unique(hand_mask):
-#             if label == 0:
-#                 continue
-#             overlay[hand_mask == label] = HAND_COLORS[label].rgb
+#     Args:
+#         loss_lists (list of lists): List of lists, where each inner list contains loss values for different metrics.
+#         labels (list of str, optional): List of labels for each loss curve. Default is None.
+#         title (str): Title of the plot. Default is "Loss Curves".
+#         xlabel (str): Label for the x-axis. Default is "Epoch".
+#         ylabel (str): Label for the y-axis. Default is "Loss".
+#         figsize (tuple, optional): Size of the figure. Default is (19.2, 10.8).
+#         dpi (int, optional): Dots per inch for the figure. Default is 100.
+#         save_path (str, optional): Path to save the plot. If None, the plot will be displayed. Default is None.
 
-#     # draw object mask
-#     if object_mask is not None:
-#         for label in np.unique(object_mask):
-#             if label == 0:
-#                 continue
-#             overlay[object_mask == label] = OBJ_CLASS_COLORS[label].rgb
+#     Returns:
+#         None
+#     """
+#     # Create a new figure with the specified size and DPI
+#     plt.figure(figsize=figsize, dpi=dpi)
 
-#     # draw boxes
-#     if draw_boxes:
-#         if hand_mask is not None:
-#             for label in np.unique(hand_mask):
-#                 if label == 0:
-#                     continue
-#                 mask = hand_mask == label
-#                 color = HAND_COLORS[label]
-#                 box = get_bbox_from_mask(mask)
-#                 cv2.rectangle(
-#                     overlay,
-#                     (box[0], box[1]),
-#                     (box[2], box[3]),
-#                     color.rgb,
-#                     2,
-#                 )
-#         if object_mask is not None:
-#             for label in np.unique(object_mask):
-#                 if label == 0:
-#                     continue
-#                 mask = object_mask == label
-#                 box = get_bbox_from_mask(mask)
-#                 color = OBJ_CLASS_COLORS[label]
-#                 cv2.rectangle(
-#                     overlay,
-#                     (box[0], box[1]),
-#                     (box[2], box[3]),
-#                     color.rgb,
-#                     2,
-#                 )
+#     # Plot each loss curve with an appropriate label
+#     for i, loss_list in enumerate(loss_lists):
+#         label = labels[i] if labels and i < len(labels) else f"Loss {i+1}"
+#         plt.plot(loss_list, label=label)
 
-#     # draw prompt points
-#     if prompt_points is not None and prompt_labels is not None:
-#         points = np.array(prompt_points, dtype=np.int32).reshape(-1, 2)
-#         labels = np.array(prompt_labels, dtype=np.int32).reshape(-1)
-#         for i, (point, label) in enumerate(zip(points, labels)):
-#             color = COLORS["dark_red"] if label == 0 else COLORS["dark_green"]
-#             cv2.circle(overlay, point, 3, color.rgb, -1)
+#     # Set the title and labels for the plot
+#     plt.title(title)
+#     plt.xlabel(xlabel)
+#     plt.ylabel(ylabel)
 
-#     overlay = cv2.addWeighted(rgb_image, 1 - alpha, overlay, alpha, 0)
+#     # Display the legend and grid
+#     plt.legend()
+#     plt.grid(True)
 
-#     # draw hand sides for hand mask
-#     if draw_hand_sides and hand_mask is not None and hand_marks is None:
-#         for label in np.unique(hand_mask):
-#             if label == 0:
-#                 continue
-#             mask = hand_mask == label
-#             color = HAND_COLORS[label]
-#             text = "right" if label == 1 else "left"
-#             x, y, _, _ = cv2.boundingRect(mask.astype(np.uint8))
-#             text_x = x
-#             text_y = y - 5
-#             cv2.putText(
-#                 overlay,
-#                 text,
-#                 (text_x, text_y),
-#                 cv2.FONT_HERSHEY_DUPLEX,
-#                 1,
-#                 color.rgb,
-#                 1,
-#                 cv2.LINE_AA,
-#             )
+#     # Save the plot to a file if save_path is provided, otherwise display it
+#     if save_path:
+#         plt.savefig(str(save_path), bbox_inches="tight", pad_inches=0)
+#     else:
+#         plt.show()
 
-#     # draw hand landmarks
-#     if hand_marks is not None:
-#         for ind, marks in enumerate(hand_marks):
-#             if np.all(marks == -1):
-#                 continue
+#     # Close the figure to free memory
+#     plt.close()
 
-#             # draw bones
-#             for bone_idx, bone in enumerate(HAND_BONES):
-#                 if np.any(marks[bone[0]] == -1) or np.any(marks[bone[1]] == -1):
-#                     continue
-#                 color = HAND_BONE_COLORS[bone_idx]
-#                 cv2.line(
-#                     overlay,
-#                     marks[bone[0]],
-#                     marks[bone[1]],
-#                     color.rgb,
-#                     2,
-#                 )
-#             # draw joints
-#             for i, mark in enumerate(marks):
-#                 if np.any(mark == -1):
-#                     continue
-#                 color = HAND_JOINT_COLORS[i]
-#                 cv2.circle(overlay, mark, 5, (255, 255, 255), -1)
-#                 cv2.circle(
-#                     overlay,
-#                     mark,
-#                     3,
-#                     color.rgb,
-#                     -1,
-#                 )
 
-#             if draw_boxes:
-#                 box = get_bbox_from_landmarks(marks, width, height)
-#                 color = HAND_COLORS[1] if ind == 0 else HAND_COLORS[2]
-#                 cv2.rectangle(
-#                     overlay,
-#                     (box[0], box[1]),
-#                     (box[2], box[3]),
-#                     color.rgb,
-#                     2,
-#                 )
+# def draw_mask_overlay(rgb, mask, alpha=0.5, mask_color=(0, 255, 0), reduce_bg=False):
+#     """
+#     Draw a mask overlay on an RGB image.
 
-#             if draw_hand_sides:
-#                 text = "right" if ind == 0 else "left"
-#                 color = HAND_COLORS[1] if ind == 0 else HAND_COLORS[2]
-#                 x, y, _, _ = cv2.boundingRect(
-#                     np.array([m for m in marks if np.all(m != -1)], dtype=np.int64)
-#                 )
-#                 text_x = x
-#                 text_y = y - 5
-#                 cv2.putText(
-#                     overlay,
-#                     text,
-#                     (text_x, text_y),
-#                     cv2.FONT_HERSHEY_DUPLEX,
-#                     1,
-#                     color.rgb,
-#                     1,
-#                     cv2.LINE_AA,
-#                 )
+#     Args:
+#         rgb (np.ndarray): RGB image, shape (height, width, 3).
+#         mask (np.ndarray): Binary mask, shape (height, width).
+#         alpha (float): Transparency of the mask overlay.
+#         mask_color (tuple): RGB color of the mask overlay.
+#         reduce_bg (bool): If True, reduce the background intensity of the RGB image.
 
-#     return overlay
+#     Returns:
+#         np.ndarray: RGB image with mask overlay.
+#     """
+#     # Create an overlay based on whether to reduce the background
+#     if reduce_bg:
+#         overlay = np.zeros_like(rgb)
+#     else:
+#         overlay = rgb.copy()
+
+#     # Apply the mask color to the overlay where the mask is true
+#     overlay[mask.astype(bool)] = mask_color
+
+#     # Blend the overlay with the original image
+#     blended = cv2.addWeighted(overlay, alpha, rgb, 1 - alpha, 0)
+
+#     return blended
 
 
 def draw_debug_image(
@@ -1061,84 +901,68 @@ def draw_debug_image(
     return overlay
 
 
-class KalmanFilter:
-    def __init__(self, dim_x, dim_z):
-        self.dim_x = dim_x
-        self.dim_z = dim_z
-        self.x = torch.zeros(dim_x, dtype=torch.float32)
-        self.P = torch.eye(dim_x, dtype=torch.float32) * 10.0
-        self.Q = torch.eye(dim_x, dtype=torch.float32) * 0.1
-        self.R = torch.eye(dim_z, dtype=torch.float32) * 0.1
-        self.F = torch.eye(dim_x, dtype=torch.float32)
-        self.H = torch.eye(dim_z, dtype=torch.float32)
+def runner_get_rendered_image(
+    rgb_images,
+    mano_mesh=None,
+    object_mesh=None,
+    object_pose=None,
+    cam_Ks=None,
+    cam_RTs=None,
+):
+    def get_rendered_color(cam_idx):
+        r = pyrender.OffscreenRenderer(width, height)
+        scene.main_camera_node = cam_nodes[cam_idx]
+        color, _ = r.render(scene)
+        r.delete()
+        return color
 
-    def predict(self):
-        self.x = torch.matmul(self.F, self.x)
-        self.P = torch.matmul(torch.matmul(self.F, self.P), self.F.T) + self.Q
+    height, width = rgb_images[0].shape[:2]
 
-    def update(self, z):
-        z = torch.tensor(z, dtype=torch.float32)
-        y = z - torch.matmul(self.H, self.x)
-        S = torch.matmul(self.H, torch.matmul(self.P, self.H.T)) + self.R
-        K = torch.matmul(torch.matmul(self.P, self.H.T), torch.inverse(S))
-        self.x = self.x + torch.matmul(K, y)
-        I = torch.eye(self.dim_x, dtype=torch.float32)
-        self.P = torch.matmul((I - torch.matmul(K, self.H)), self.P)
+    # Setup the scene
+    scene = pyrender.Scene(bg_color=[0.0, 0.0, 0.0], ambient_light=[1.0, 1.0, 1.0])
+    root_node = scene.add_node(pyrender.Node())
 
+    # Create camera nodes
+    cam_nodes = [
+        scene.add(
+            pyrender.IntrinsicsCamera(
+                fx=K[0, 0],
+                fy=K[1, 1],
+                cx=K[0, 2],
+                cy=K[1, 2],
+                znear=0.01,
+                zfar=10.0,
+            ),
+            name=f"camera_{i}",
+            pose=RT @ cvcam_in_glcam,
+            parent_node=root_node,
+        )
+        for i, (K, RT) in enumerate(zip(cam_Ks, cam_RTs))
+    ]
 
-def interpolate_missing_poses_kalman(poses):
-    poses = torch.tensor(poses, dtype=torch.float32)
-    N, D = poses.shape
-    assert D == 6, "Each pose should have 6 values: (rx, ry, rz, x, y, z)"
+    # Add mano node
+    if mano_mesh is not None:
+        scene.add(
+            pyrender.Mesh.from_trimesh(mano_mesh, smooth=False),
+            pose=np.eye(4),
+            name="mano",
+            parent_node=root_node,
+        )
 
-    kf = KalmanFilter(dim_x=D, dim_z=D)
+    # Add object node
+    if object_mesh is not None:
+        scene.add(
+            pyrender.Mesh.from_trimesh(object_mesh, smooth=False),
+            pose=object_pose,
+            name="object",
+            parent_node=root_node,
+        )
 
-    valid_indices = torch.where(~torch.all(poses == -1, dim=1))[0]
-    first_valid_index = valid_indices[0]
-    kf.x = poses[first_valid_index]
+    # render the scene
+    vis = [get_rendered_color(i) for i in range(len(cam_nodes))]
+    vis = [
+        cv2.addWeighted(rgb_images[i], 0.25, vis[i], 0.75, 0)
+        for i in range(len(rgb_images))
+    ]
 
-    interpolated_poses = []
-
-    for i in range(N):
-        if torch.all(poses[i] == -1):
-            kf.predict()
-        else:
-            kf.update(poses[i])
-
-        interpolated_poses.append(kf.x.clone().detach().numpy())
-
-    return np.array(interpolated_poses)
-
-
-def cubic_spline_interpolation(poses):
-    import torch.nn.functional as F
-
-    poses = torch.tensor(poses, dtype=torch.float32)
-    N, D = poses.shape
-    assert D == 6, "Each pose should have 6 values: (rx, ry, rz, x, y, z)"
-
-    valid_indices = torch.where(~torch.all(poses == -1, dim=1))[0]
-    invalid_indices = torch.where(torch.all(poses == -1, dim=1))[0]
-
-    for i in range(D):
-        valid_values = poses[valid_indices, i]
-        cubic_interp = torch.interp1d(valid_indices.float(), valid_values, kind="cubic")
-        poses[invalid_indices, i] = cubic_interp(invalid_indices.float())
-
-    return poses.numpy()
-
-
-def linear_interpolation(poses):
-    poses = torch.tensor(poses, dtype=torch.float32)
-    N, D = poses.shape
-    assert D == 6, "Each pose should have 6 values: (rx, ry, rz, x, y, z)"
-
-    valid_indices = torch.where(~torch.all(poses == -1, dim=1))[0]
-    invalid_indices = torch.where(torch.all(poses == -1, dim=1))[0]
-
-    for i in range(D):
-        valid_values = poses[valid_indices, i]
-        interp_func = torch.interp1d(valid_indices.float(), valid_values)
-        poses[invalid_indices, i] = interp_func(invalid_indices.float())
-
-    return poses.numpy()
+    return display_images(vis, facecolor="black", return_array=True)

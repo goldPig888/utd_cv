@@ -4,10 +4,9 @@
 
 
 CURR_DIR=$(realpath $( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd ))
-source ${CURR_DIR}/00_config.sh
+PROJ_DIR=$(dirname ${CURR_DIR})
 
-# Path to the script that extracts the rosbag
-SCRIPT_FILE="${PROJ_DIR}/tools/05_run_merged_fd_pose.py"
+SCRIPT_FILE="${PROJ_DIR}/tools/08_run_hamer_mano_solver.py"
 
 ALL_SEQUENCES=(
 data/recordings/ida_20240617_101133
@@ -23,7 +22,7 @@ data/recordings/rebecca_20240617_100917
 # Extract the rosbag
 for SEQUENCE in ${ALL_SEQUENCES[@]} ; do
     echo "###############################################################################"
-    echo "# Running MP Handmarks Detection on ${SEQUENCE}"
+    echo "# Running MANO Solver on ${SEQUENCE}"
     echo "###############################################################################"
     python ${SCRIPT_FILE} \
         --sequence_folder ${PROJ_DIR}/${SEQUENCE}

@@ -1,52 +1,12 @@
-import numpy as np
-import cv2
-from tqdm import tqdm
-
-import torch
-from torch.utils.data.dataset import Dataset
-from torch.utils.data import DataLoader
 from torchvision import transforms
-
 from .Utils import *
 
+# ================== Import libs from XMem ==================
 add_path(EXTERNAL_ROOT / "XMem")
 
 from model.network import XMem
 from inference.inference_core import InferenceCore
 from inference.data.mask_mapper import MaskMapper
-
-
-class DataReader(Dataset):
-    def __init__(self, color_files, first_mask_file):
-        self.color_files = color_files
-        self.mask_file = first_mask_file
-        self.im_transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
-            ]
-        )
-
-    def __getitem__(self, idx):
-        data = {}
-        info = {}
-
-        # process color image
-        img = cv2.imread(str(self.color_files[idx]))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = self.im_transform(img)
-        data["rgb"] = img
-
-        # process mask image
-        if idx == 0:
-            data["mask"] = cv2.imread(str(self.mask_file), cv2.IMREAD_GRAYSCALE)
-
-        return data
-
-    def __len__(self):
-        return len(self.color_files)
 
 
 class XMemWrapper:
@@ -145,65 +105,3 @@ class XMemWrapper:
             out_mask = (out_mask.detach().cpu().numpy()).astype(np.uint8)
             out_mask = self._mapper.remap_index_mask(out_mask)
             return out_mask
-
-    @torch.no_grad()
-    def process(self, color_files, first_mask_file, out_folder):
-        """Processes a video and saves the masks.
-
-        Args:
-            color_files (list): List of paths to the color images.
-            first_mask_file (str): Path to the first mask image.
-            out_folder (str): Path to the folder where the masks will be saved.
-        """
-        if not Path(first_mask_file).exists():
-            self._logger.error(f"Mask file does not exist! Exiting...")
-            return
-
-        self._save_folder = Path(out_folder).resolve()
-        self._save_folder.mkdir(parents=True, exist_ok=True)
-
-        # Start eval
-        self.reset()
-        vid_reader = DataReader(color_files, first_mask_file)
-        loader = DataLoader(vid_reader, batch_size=1, shuffle=False, num_workers=2)
-        vid_length = len(vid_reader)
-
-        processor = InferenceCore(self._network, config=self._config)
-        first_mask_loaded = False
-
-        self._mapper.labels = []
-        self._mapper.remappings = {}
-        for ti, data in tqdm(enumerate(loader), total=vid_length, ncols=60):
-            with torch.cuda.amp.autocast(enabled=True):
-                rgb = data["rgb"].to(self._device)[0]
-                msk = data.get("mask")
-                if not self._first_mask_loaded:
-                    if msk is not None:
-                        self._first_mask_loaded = True
-                    else:
-                        # no point to do anything without a mask
-                        continue
-
-                # map possibly non-continuous labels to continuous ones
-                if msk is not None:
-                    msk, labels = self._mapper.convert_mask(msk[0].numpy())
-                    msk = torch.Tensor(msk).to(self._device)
-                    self._processor.set_all_labels(
-                        list(self._mapper.remappings.values())
-                    )
-                else:
-                    labels = None
-
-                # run the model on this frame
-                prob = self._processor.step(
-                    rgb, msk, labels, end=(ti == vid_length - 1)
-                )
-                torch.cuda.synchronize()
-
-                # probability mask -> index mask
-                out_mask = torch.max(prob, dim=0).indices
-                out_mask = out_mask.detach().cpu().numpy().astype(np.uint8)
-                out_mask = self._mapper.remap_index_mask(out_mask)
-
-                # save the mask
-                cv2.imwrite(str(self._save_folder / f"mask_{ti:06d}.png"), out_mask)

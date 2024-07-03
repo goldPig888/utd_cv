@@ -1,38 +1,42 @@
-import argparse
 from _init_paths import *
 from lib.Utils import *
-from lib.SequenceLoader import SequenceLoader
 from lib.XMemWrapper import XMemWrapper
+from lib.SequenceLoader import SequenceLoader
 
 
 def main():
+    start_time = time.time()
+
+    # Initialize XMemWrapper
+    xmem_wrapper = XMemWrapper(model_type="XMem", device=device)
+
+    # Load the sequence
     loader = SequenceLoader(sequence_folder, device=device)
     serials = loader.serials
     num_frames = loader.num_frames
-    xmem_wrapper = XMemWrapper(model_type="XMem", device=device)
+    segmentation_folder = sequence_folder / "processed/segmentation"
 
     for serial in serials:
-        tqdm.write(f"Processing serial {serial}...")
-        # read the first mask
-        mask_0_file = sorted(
-            (
-                sequence_folder / "processed/segmentation/init_segmentation" / serial
-            ).glob("mask_*.png")
-        )[0]
-        if not mask_0_file.exists():
-            tqdm.write(f"  - Mask file {mask_0_file} does not exist! Exiting...")
+        logger.info(f"Processing serial {serial}...")
+
+        # Read the first mask
+        mask_files = sorted(
+            (segmentation_folder / "init_segmentation" / serial).glob("mask_*.png")
+        )
+
+        if not mask_files:
+            logger.warning(f"  - Initial mask does not exist! Skipping...")
             continue
 
+        mask_0_file = mask_files[0]
         mask_0_frame_id = int(mask_0_file.stem.split("_")[1])
         mask_0 = read_mask_image(mask_0_file)
 
-        save_folder = (
-            sequence_folder / "processed/segmentation/xmem_segmentation" / serial
-        )
+        save_folder = segmentation_folder / "xmem_segmentation" / serial
         save_folder.mkdir(parents=True, exist_ok=True)
 
-        # read the rgb images
-        tqdm.write("  - Reading RGB images...")
+        # Read the rgb images
+        logger.info("  - Reading RGB images...")
         tqbar = tqdm(total=num_frames, ncols=60, colour="green")
         rgb_images = [None] * num_frames
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -42,12 +46,11 @@ def main():
             }
             for future in concurrent.futures.as_completed(futures):
                 rgb_images[futures[future]] = future.result()
-                tqbar.update(1)
+                tqbar.update()
                 tqbar.refresh()
-            del futures
         tqbar.close()
 
-        tqdm.write("  - Running XMem segmentation...")
+        logger.info("  - Running XMem segmentation...")
         xmem_wrapper.reset()
 
         tqbar = tqdm(total=num_frames, ncols=60, colour="green")
@@ -58,7 +61,7 @@ def main():
                 mask=mask_0 if frame_id == mask_0_frame_id else None,
             )
             mask_images[frame_id] = mask
-            tqbar.update(1)
+            tqbar.update()
             tqbar.refresh()
         if mask_0_frame_id > 0:
             # xmem_wrapper.reset()
@@ -70,11 +73,11 @@ def main():
                 )
                 mask_images[frame_id] = mask
                 if frame_id != mask_0_frame_id:
-                    tqbar.update(1)
+                    tqbar.update()
                     tqbar.refresh()
         tqbar.close()
 
-        tqdm.write("  - Saving XMem masks...")
+        logger.info("  - Saving XMem masks...")
         tqbar = tqdm(total=num_frames, ncols=60, colour="green")
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = {
@@ -87,12 +90,11 @@ def main():
             }
             for future in concurrent.futures.as_completed(futures):
                 future.result()
-                tqbar.update(1)
+                tqbar.update()
                 tqbar.refresh()
-            del futures
         tqbar.close()
 
-        tqdm.write("  - Generating XMem vis images...")
+        logger.info("  - Generating XMem vis images...")
         tqbar = tqdm(total=num_frames, ncols=60, colour="green")
         vis_images = [None] * num_frames
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -108,14 +110,14 @@ def main():
             }
             for future in concurrent.futures.as_completed(futures):
                 vis_images[futures[future]] = future.result()
-                tqbar.update(1)
+                tqbar.update()
                 tqbar.refresh()
-            del futures
         tqbar.close()
 
-        del rgb_images, mask_images
+        del rgb_images
+        del mask_images
 
-        tqdm.write("  - Saving XMem vis images...")
+        logger.info("  - Saving XMem vis images...")
         tqbar = tqdm(total=num_frames, ncols=60, colour="green")
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = {
@@ -133,39 +135,36 @@ def main():
             del futures
         tqbar.close()
 
-        tqdm.write("  - Saving vis video...")
+        logger.info("  - Saving vis video...")
         create_video_from_rgb_images(
-            video_path=sequence_folder
-            / "processed/segmentation/xmem_segmentation"
-            / f"vis_{serial}.mp4",
-            images=vis_images,
+            video_path=segmentation_folder / "xmem_segmentation" / f"vis_{serial}.mp4",
+            rgb_images=vis_images,
             fps=30,
         )
         del vis_images
 
-    del loader, xmem_wrapper
+    end_time = time.time()
+    elapsed_time = end_time - start_time
 
-    tqdm.write(">>>>>>>>>> Done. <<<<<<<<<<<<")
+    logger.info(f">>>>>>>>>> Done!!! ({elapsed_time:.2f} seconds)<<<<<<<<<<")
 
 
-def args_parser():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run X-Mem segmentation on a sequence."
     )
     parser.add_argument(
-        "--sequence_folder",
-        type=str,
-        help="Path to the folder containing the sequence.",
+        "--sequence_folder", type=str, required=True, help="Path to the sequence folder"
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    sequence_folder = Path(args.sequence_folder).resolve()
 
-
-if __name__ == "__main__":
-    sequence_folder = Path(args_parser().sequence_folder).resolve()
+    logger = get_logger("RunXMemSegmentation")
 
     if not torch.cuda.is_available():
-        print("CUDA is not available. Exiting...")
+        logger.error("CUDA is not available. Exiting...")
         exit()
+
     device = torch.device("cuda")
 
     main()

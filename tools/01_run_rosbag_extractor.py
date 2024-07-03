@@ -1,6 +1,5 @@
 import argparse
 from _init_paths import *
-
 from lib.RosbagExtractor import RosbagExtractor
 
 
