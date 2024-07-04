@@ -1,49 +1,64 @@
 # Summer Camp
+  
+  [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org/downloads/release/python-3100) [![ROS](https://img.shields.io/badge/ROS-Melodic-green.svg)](http://wiki.ros.org/melodic) [![Pytorch](https://img.shields.io/badge/Pytorch-2.1.1-orange.svg)](https://pytorch.org/) ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
-**Contents**
+This is the repository for the Summer Camp project. The project aims to estimate the hand and object poses from the recordings captured by the Multi-Camera System.
+
+---
+
+## Contents
 
 - [Summer Camp](#summer-camp)
-  - [Introduction](#introduction)
+  - [Contents](#contents)
+  - [Download Links](#download-links)
   - [Environment Setup](#environment-setup)
     - [Install Git](#install-git)
-    - [Install the Code Editor (VSCode for example)](#install-the-code-editor-vscode-for-example)
     - [Clone the Repository](#clone-the-repository)
+    - [Install the VSCode Editor](#install-the-vscode-editor)
     - [Python Environment Setup](#python-environment-setup)
   - [Project Schedule](#project-schedule)
     - [Week 1: Introduction to the Basics](#week-1-introduction-to-the-basics)
-    - [Week 2: Data Collection](#week-2-data-collection)
-    - [Week 3: Scripts Preparation](#week-3-scripts-preparation)
-    - [Week 4: Data Processing](#week-4-data-processing)
-  - [Data Collection](#data-collection)
+    - [Week 2: Data Collection (Calibration)](#week-2-data-collection-calibration)
+    - [Week 3: Data Collection (Continued)](#week-3-data-collection-continued)
+    - [Week 4: Data Processing (Handmarks \& Object Masks)](#week-4-data-processing-handmarks--object-masks)
+    - [Week 5: Data Processing (Hand \& Object Pose Estimation)](#week-5-data-processing-hand--object-pose-estimation)
+  - [Processed Results](#processed-results)
 
-## Introduction
+---
 
-This is the repository for the Summer Camp project. The project aims to estimate the hand and object poses from the recordings captured by the Multi-Camera System. 
+## Download Links
+
+- [Recorded Rosbags](https://utdallas.box.com/s/inkzi3td9sfhe4efd9uso5orxolcv03g).
+- [Extracted Recordings](https://utdallas.box.com/s/8sczu67ufl2wuirk4c6lyssex2y125fc).
+- [Processed Results](https://utdallas.box.com/s/uge3jhx2livb9ns1mn5qe04w1j2dvsy3).
 
 ## Environment Setup
 
   ### Install Git
 
   - Linux
-
     ```bash
     sudo apt-get install git
     ```
 
   - Windows
-
-    I suguest to use [Github Desktop](https://desktop.github.com/), which is more user-friendly. Otherwise, you could install git via [Git for Windows](https://gitforwindows.org/).
+    - Option One: [Github Desktop](https://desktop.github.com/).
+    - Option Two: [Git for Windows](https://gitforwindows.org/).
 
   - MacOS
-
-    You can install git either via [Homebrew](https://brew.sh/), or [Github Desktop](https://desktop.github.com/).
-
-    - Homebrew
+    - Option One: [Github Desktop](https://desktop.github.com/).
+    - Option Two: [Homebrew](https://brew.sh/).
       ```bash
       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
       ```
+  
+  ### Clone the Repository
+  
+  ```bash
+  git clone --recursive https://github.com/gobanana520/summer_camp.git
+  ```
 
-  ### Install the Code Editor (VSCode for example)
+  ### Install the VSCode Editor
 
   - You could install the Visual Studio Code (VSCode) from the [official website](https://code.visualstudio.com/).
   - Once you have installed the VSCode, you could install below extensions:
@@ -54,229 +69,291 @@ This is the repository for the Summer Camp project. The project aims to estimate
     - [Black Formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter)
 
 
-  ### Clone the Repository
   
-  ```bash
-  git clone https://github.com/gobanana520/summer_camp.git summer_camp
-  ```
 
   ### Python Environment Setup
 
-  Follow steps in the [Python Environment Setup](./docs/Python_Environment_Setup.md) document to setup your Python environment.
+  - Follow steps in the [Python Environment Setup](./docs/Python_Environment_Setup.md) document to setup your Python environment.
+
+  - If you plan to run the ROS locally, you could follow the [ROS Environment Setup](./docs/ROS_Environment_Setup.md) document to setup the ROS environment with conda. Then you could run the command `roscore` to start the ROS master, and debug your code under the ROS environment.
 
 ---
 
 ## Project Schedule
 
+
 ### Week 1: Introduction to the Basics
-- :white_check_mark: [Pythion Basics](./notebooks/01_Python_Basics.ipynb)
-  Try to understand basics in Python, such as list, tuple, set, dictionary, class, function, loop, etc.
 
-- :white_check_mark: [Numpy Basics](./notebooks/02_Python_Numpy.ipynb)
-  Try to understand basics in Numpy, such as array, matrix, operation, etc.
-
-- :white_check_mark: [Pytorch Basics](./notebooks/06-1_Pytorch_Basics.ipynb)
-  Try to understand basics in Pytorch, such as tensor, operation, etc.
-- :white_check_mark: [ComputerVisionBasics](./docs/slides/01_ComputerVisionBasics.pdf)
-  - Practice 1: [Transformation](./notebooks/03-3_CV_Transformation.ipynb)
-    How to apply the transformation to 3D points.
-  - Practice 2: [Deprojection](./notebooks/03-1_CV_Deprojection.ipynb)
-    How to depreject the 2D image points to 3D camera points.
-  - Practice 3: [Triangulation](./notebooks/03-2_CV_Triangulation.ipynb)
-    How to calculate the 3D world points from 2D image points.
-  - Homework 1: [SequenceLoader](./notebooks/hw1_SequenceLoader.ipynb)
-    Write a class to load the data from sequence recording.
-- :white_check_mark: [Introduction_to_ROS](./docs/slides/02_Introduction_to_ROS.pdf)
-  Understand the basic concepts and useful commands in ROS.
-- :white_check_mark: [Introduction_to_MANO](./docs/slides/03_Introduction_to_MANO.pdf)
-  Understand the basic concepts of parametric hand model MANO. And introduce the Pytorch implementation of MANO ([Manopth](https://github.com/hassony2/manopth)).
-  - Practice 4: [MANO_Hand](./notebooks/05_MANO_Hand.ipynb)
-    Understand how to initialize the MANO layer and run the forward process.
-- :white_check_mark: [Introduction_to_Optimization](./docs/slides/04_Introduction_to_Optimization.pdf)
-  Understand the basic concepts of optimization and the optimization algorithms.
-  - Practice 5: [Optimization](./notebooks/06-2_MANO_Pose_Optimization.ipynb)
-    Implement the optimization algorithm to optimize the MANO hand pose parameters to fit the target 3D keypoints.
-- :books: Readings
+- **Slides**
+  - :white_check_mark: [Pythion_Basics.ipynb](./notebooks/01_Python_Basics.ipynb)
+    Introduce basics in Python, such as list, tuple, set, dictionary, class, function, loop, etc.
+  - :white_check_mark: [Numpy_Basics.ipynb](./notebooks/02_Python_Numpy.ipynb)
+    Introduce basics in Numpy, such as array, matrix, operation, etc.
+  - :white_check_mark: [Pytorch_Basics.ipynb](./notebooks/06-1_Pytorch_Basics.ipynb)
+    Introduce basics in Pytorch, such as tensor, operation, etc.
+  - :white_check_mark: [ComputerVisionBasics.pdf](./docs/slides/01_ComputerVisionBasics.pdf)
+    - Practice 1: [CV_Transformation.ipynb](./notebooks/03-3_CV_Transformation.ipynb)
+      How to apply the transformation on 3D points.
+    - Practice 2: [CV_Deprojection.ipynb](./notebooks/03-1_CV_Deprojection.ipynb)
+      How to depreject the 2D depth image to 3D points.
+    - Practice 3: [CV_Triangulation.ipynb](./notebooks/03-2_CV_Triangulation.ipynb)
+      How to calculate the 3D points from 2D landmarks.
+    - Practice 4: [SequenceLoader.ipynb](./notebooks/hw1_SequenceLoader.ipynb)
+      Write a class to load the data from demo sequence.
+  - :white_check_mark: [Introduction_to_ROS.pdf](./docs/slides/02_Introduction_to_ROS.pdf)
+    Introduce the basic concepts and useful commands in ROS.
+  - :white_check_mark: Slide: [Introduction_to_MANO.pdf](./docs/slides/03_Introduction_to_MANO.pdf)
+    Introduce the basic concepts of parametric hand model MANO, and the Pytorch implementation of MANO ([Manopth](https://github.com/hassony2/manopth)).
+    - Practice 5: [MANO_Hand.ipynb](./notebooks/05_MANO_Hand.ipynb)
+      How to initialize the MANO layer and run the forward process.
+  - :white_check_mark: [Introduction_to_Optimization.pdf](./docs/slides/04_Introduction_to_Optimization.pdf)
+    Introduce the basic concepts of optimization and the optimization algorithms.
+    - Practice 6: [MANO_Pose_Optimization.ipynb](./notebooks/06-2_MANO_Pose_Optimization.ipynb)
+      How to use the Adam algorithm to optimize the MANO hand pose parameters to fit the target 3D joints.
+- :books: **Readings**
   - :point_right: Highlights
-    - [RANSAC Algorithm](https://en.wikipedia.org/wiki/Random_sample_consensus)
-      - Practice: [RANSAC](./notebooks/04_RANSAC_Algorithm.ipynb)
+    - Wiki: [RANSAC Algorithm](https://en.wikipedia.org/wiki/Random_sample_consensus)
+      - Practice 7: Notebook: [RANSAC_Algorithm.ipynb](./notebooks/04_RANSAC_Algorithm.ipynb)
         A simple implementation of RANSAC algorithm.
-    - [SDF (Signed Distance Function)](https://en.wikipedia.org/wiki/Signed_distance_function)
-        Understand the basic concept of SDF. We will use SDF loss to optimize the Hand/Object pose.
-    - ROS message synchronization & extraction
+    - ROS message Synchronization & Extraction
       - [Export image from rosbag](https://gist.github.com/zxf8665905/2d09d25da823b0f7390cab83c64d631a)
-        Understand how to synchronize the messages from different topics, and extract the images. We will write a RosbagExtractor to extract the images from the rosbag recordings.
-    - [MediaPipe Handmarks Detection](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker)
-      Understand the MediaPipe Handmarks Detection. We will write the HandmarksDetector to detect the handmarks from the images.
-  - Papers (Optional)
+        A demo code of how to sync messages with `message_filters.ApproximateTimeSynchronizer()` from the rosbag file.
+    - Link: [MediaPipe Handmarks Detection](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker)
+      Understand how to use MediaPipe to detect Handmarks from RGB images.
+  - Methods will be used in the project
+    - Hand Pose Estimation: [HaMeR](https://geopavlakos.github.io/hamer)
+    - Object Pose Estimation: [FoundationPose](https://nvlabs.github.io/FoundationPose)
+    - Image Segmentation: [Segment Anything](https://github.com/facebookresearch/segment-anything)
+    - Video Object Segmentation: [XMem](https://hkchengrex.com/XMem)
+  - Related Papers (Optional)
     - [SMPL Body Model](./docs/papers/SMPL.pdf)
     - [SMPL-H Body Model](./docs/papers/SMPL-H.pdf)
     - [SMPL-X Body Model](./docs/papers/SMPL-X.pdf)
-  - Methods will be used in the project
-    - Object Pose Estimation
-      - [FoundationPose](https://nvlabs.github.io/FoundationPose)
-    - Image Segmentation
-      - [Segment Anything](https://github.com/facebookresearch/segment-anything)
-    - Video Object Segmentation
-      - [XMem](https://hkchengrex.com/XMem)
+    - [HaMeR](./docs/papers/HaMeR.pdf)
+    - [FoundationPose](./docs/papers/FoundationPose.pdf)
+    - [XMem](./docs/papers/XMem.pdf)
+    - [Segment Anything](./docs/papers/SegmentAnything.pdf)
 
-### Week 2: Data Collection
 
-- Overview of FoundationPose and Segment Anything
-  - [FoundationPose](./docs/papers/FoundationPose.pdf)
-  - [Segment Anything](./docs/papers/SegmentAnything.pdf)
-- :white_check_mark: Camera Calibration for the latest Canera Extrinsics
-  ![camera_calibration](./docs/resources/camera_calibration_vicalib.gif)
-- :white_check_mark: Hand Calibration for each team members.
-- Record data with ROS
-  - Select the Objects
-  - Design the tasks (e.g., pick and place, handover, etc.)
-- Extract the images from the rosbag recordings
+### Week 2: Data Collection (Calibration)
+
+- **Tasks**
+  - :white_check_mark: Camera Intrinsics Extraction
+    - The camera intrinsics are saved under the `./data/calibration/intrinsics/<camera_serial>_640x480.json` file.
+
+  - :white_check_mark: Camera Extrinsics Calibration
+    - We use a large calibration board to calibrate the camera extrinsics in pairs. Below is the usage demo of the tool [Vicalib](https://github.com/arpg/vicalib):
+    ![camera_calibration](./docs/resources/camera_calibration_vicalib.gif)
+    - The camera extrinsics are saved under the `./data/calibration/extrinsics/extrinsics_<data>/extrinsics.json` file.
+
+  - :white_check_mark: Hand Shape Calibration.
+    - The MANO hand shapes are saved under the `./data/calibration/mano/<person_id>/mano.json` file.
+  - :white_check_mark: Get familiar with data collection with the Multi-Camera System.
+    - Launch all the Realsense Cameras with ROS.
+    - Use RVIZ to visualize the camera images.
+    - Monitor the camera status.
+    - Command to record the rosbag from specific topics.
+
+### Week 3: Data Collection (Continued)
+
+- **Objects Used in the Dataset**
+  - The dataset contains the following objects:
+    ![Object List](./docs/resources/objects_info.png)
+  - The object models are saved under the `./data/models` folder. You could use [Meshlab](https://www.meshlab.net/) to view the object models.
+
+- **Tasks**
+  - :white_check_mark: Collect the data with the Multi-Camera System.
+    - Each person will pick one object.
+    - Use single / two hands to manipulate the object.
+    - Recording is saved to the rosbag file.
+  - :white_check_mark: Extract the images from the rosbag recordings.
+
 - **Homeworks**
-  - HW1: Rosbag_Extraction
-    - Try to write the class `RosbagExtractor` 
+  - HW1: Rosbag Extraction
+    - Write the class `RosbagExtractor` 
       - to extract the images from the rosbag recordings for all the camera image topics.
-      - the extracted images should be saved in the `./data/recordings` folder following below structure
-        ```
-        20231022_193630           # the rosbag name
-        ├── 037522251142          # the camera serial number
-        │   ├── color_000000.jpg  # the color image color_xxxxxx.jpg
-        │   └── depth_000000.png  # the depth image depth_xxxxxx.png
-        │   └── ...  
-        ├── 043422252387
-        │   ├── color_000000.jpg
-        │   ├── depth_000000.png
-        │   ├── ...
-        ├── ...
-        ├── 117222250549
-        │   ├── color_000000.jpg
-        │   ├── depth_000000.png
-        │   ├── ...
-        ```
-    - The recorded rosbag files could be downloaded from [box](https://utdallas.box.com/s/inkzi3td9sfhe4efd9uso5orxolcv03g).
-    - If you plan to run the ROS locally, you could follow the [ROS Environment Setup](./docs/ROS_Environment_Setup.md) document to setup the ROS environment with conda. Then you could run the `roscore` to start the ROS master, and debug your code under the ROS environment.
-    - References:
-      - [Export image from rosbag](https://gist.github.com/zxf8665905/2d09d25da823b0f7390cab83c64d631a)
-  - HW2: metadata generation
-    - For each extracted recording, the metadata should be generated under the sequence folder named `meta.json`. The metadata should contain the following information:
-      ```json
-      {
-        "serials": [    // the camera serial numbers
-          "037522251142",
-          "043422252387",
-          "046122250168",
-          "105322251225",
-          "105322251564",
-          "108222250342",
-          "115422250549",
-          "117222250549"
-        ],
-        "width": 640,
-        "height": 480,
-        "extrinsics": "extrinsics_20240611",
-        "mano_calib": "subject_7",  // the person name
-        "object_ids": [ // the object ids in the recording
-          "G01_1",
-          "G01_2",
-          "G01_3"
-        ],
-        // the hand sides in the recording, if there are two 
-        // hands, the right hand should be the first one.
-        "mano_sides": [
-          "right",
-          "left"
-        ],
-        "num_frames": 100 // the number of frames in the recording
-      }
+    - the extracted images should be saved in the `./data/recordings/<person_id>_<rosbag_name>` folder following below structure
       ```
-  - HW3: Handmarks_Detection
-    - Try to write the class `HandDetector` to detect the handmarks from the extracted images using the [MediaPipe Handmarks Detection](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker).
-    - The detected handmarks should be saved in the `./data/recordings/<sequence_name>/processed/hand_detection` folder following below structure
-      ```
-      <sequence_name>/processed/hand_detection
+      <person_id>_<rosbag_name> # the recording folder name
       ├── 037522251142          # the camera serial number
-      │   ├── handmarks_000000.npy  # the handmarks file handmarks_xxxxxx.npy
-      │   ├── vis_000000.png  # the visualization of the handmarks vis_xxxxxx.png
+      │   ├── color_000000.jpg  # the color image color_xxxxxx.jpg
+      │   └── depth_000000.png  # the depth image depth_xxxxxx.png
       │   └── ...  
       ├── 043422252387
-      │   ├── handmarks_000000.npy
-      │   ├── vis_000000.png
+      │   ├── color_000000.jpg
+      │   ├── depth_000000.png
       │   ├── ...
       ├── ...
       ├── 117222250549
-      │   ├── handmarks_000000.npy
-      │   ├── vis_000000.png
+      │   ├── color_000000.jpg
+      │   ├── depth_000000.png
       │   ├── ...
       ```
+    - References:
+      - [Export image from rosbag](https://gist.github.com/zxf8665905/2d09d25da823b0f7390cab83c64d631a)
+  - HW2: Metadata Generation
+    - For each extracted recording, the metadata should be generated under the sequence folder with filename `meta.json`. 
+    - The `object_id` (G01_1,...,G31_4) could be found in the [Week 3](#week-3-data-collection-continued) section.
+    - Below is an example of the `meta.json` file:
+      ```json
+      {
+          // the camera serial numbers
+          "serials": [
+              "037522251142",
+              "043422252387",
+              "046122250168",
+              "105322251225",
+              "105322251564",
+              "108222250342",
+              "115422250549",
+              "117222250549"
+          ],
+          // the image width
+          "width": 640,
+          // the image height
+          "height": 480,
+          // the extrinsics folder name
+          "extrinsics": "extrinsics_20240611",
+          // the person name
+          "mano_calib": "john",
+          // the object id
+          "object_ids": "G31_4",
+          // the hand sides in the recording 
+          // (if both hands are used, the order should be right first and then left)
+          "mano_sides": [
+              "right",
+              "left"
+          ],
+          // the number of frames in the recording
+          "num_frames": 1024
+      }
+      ```
+
+
+### Week 4: Data Processing (Handmarks & Object Masks)
+
+- **Slides**
+  - [Introduction_to 6D Pose Estimation.pdf](./docs/slides/05_Introduction_to_6D_Pose_Estimation.pdf)
+    - Understand what's 6D Object Pose Estimation. 
+    - Understand the pipeline of FoundationPose.
+      ![foundationpose_pipeline](./docs/resources/fdpose_pipeline.png)
+  - [Introduction to the HaMeR.pdf](./docs/slides/06_HaMeR.pdf)
+    - Understand what's Large Vision Transformer (ViT) model, and how it works.
+    - Understand the pipeline of HaMeR.
+      ![hamer_pipeline](./docs/resources/hamer_pipeline.png)
+
+- **Tasks**
+  - :white_check_mark: Handmarks Detection by MediaPipe
+  - :white_check_mark: Label the initial Object Mask mannually.
+  - :white_check_mark: Use XMem to generate the remaining masks for all the recordings.
+  - :white_check_mark: Generate 3D hand joints by Triangulation and RANSAC.
+  - :white_check_mark: Setup the HaMeR python environment.
+  - :white_check_mark: Setup the FoundationPose python environment.
+
+- **Homeworks**
+  - HW1: Handmarks Detection
+    - Write the class `MPHandDetector` to detect the 2D handmarks from the extracted images using the MediaPipe.
+    - The detected handmarks should be saved in the `./data/recordings/<sequence_name>/processed/hand_detection` folder following below structure:
+      ```
+      <sequence_name>/processed/hand_detection
+      ├── mp_handmarks_results.npz  # the detected handmarks results
+      └── vis                       # the folder to save the visualization results
+          ├── mp_handmarks
+          │   ├── vis_000000.png    # the visualization image of the handmarks
+          │   ├── vis_000001.png
+          │   ├── ...
+          └── mp_handmarks.mp4      # the visualization video of the handmarks
+      ```
     - The detected handmarks should be saved as the numpy array with the shape of `(num_hands, num_joints, 2)`.
-    - The detected handmarks should be saved in the image coordinate system.
+    - The detected handmarks should be saved in the image coordinate system and unnormalized.
     - The detected handmarks should be saved in the order of the right hand first, and then the left hand.
-
-
-### Week 3: Scripts Preparation
-
-The reference code for HW1, HW2, and HW3 of week2 could be found in the `./tools` folder.
-
-- :white_check_mark: Collect the data with the Multi-Camera System.
-  - One or two hands
-  - Single object manipulation
-- :white_check_mark: Extract the images from the rosbag recordings.
--  **Before Friday**, finish below homeworks, the extracted recordings could be downloaded from the [Box](https://utdallas.box.com/s/8sczu67ufl2wuirk4c6lyssex2y125fc).
-  - HW1: Complete the metadata.
-    - Download the recording of your name and unzip it to `./data/recordings`.
-    - Complete the `"object_ids"` and `"mano_sides"` information in the `meta.json` file. The `object_id` (G01_1,...,G31_4) could be found in the [Data Collection](#data-collection) section.
-  - HW2: Handmarks Detection.
-    Run the `./tools/02_run_hand_detector.py` on your recording to detect the handmarks.
-  - HW3: Generate the Object Masks for the Objects in each camera view.
-    - The `mask_id` (1, 2,...,10) of each object could be found in the [Data Collection](#data-collection) section.
-    - Install `timm` via `python pip install --no-cache-dir timm==1.0.3` in case it's not installed in the conda environment.
-    - Dwonload the pretrained models [4.3GB] for SAM:
+    - References:
+      - [MediaPipe Handmarks Detection](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker)
+  - HW2: Label the initial Object Mask mannually.
+    - The `mask_id` (1, 2,...,10) of each object could be found in the [Week 3](#week-3-data-collection-continued) section.
+    - Dwonload the pretrained models [4.3GB] for Segment Anything Model (SAM).
       - For linux like OS: run `bash ./config/sam/download_sam_model.sh` in the terminal.
-      - Or you could download the models from the [Box](https://utdallas.box.com/s/ve9ia13act2oos0s6k0mhbx6vhcj19ce) and put them under `./config/sam`.
-      - In case your disk space is limited, you could only download the `sam_vit_t.pth` model.
-    - Run the `./tools/03_mask_label_toolkit.py` to generate the object masks for the object in each camera view.
+      - Or you could download the models from the [Box](https://utdallas.box.com/s/ve9ia13act2oos0s6k0mhbx6vhcj19ce) and put them under `./config/sam` folder.
+    - Run the mask label toolkit to label the object mask in each camera view.
+      ```bash
+      python ./tools/04_run_mask_label_toolkit.py
+      ```
+      ![mask_label_toolkit](./docs/resources/labeltoolkit.gif)
       - Click `...` to select the image.
       - `Ctrl + Left Click` to add positive point (green color).
       - `Ctrl + Right Click` to add negative point (red color).
       - `R` to reset the points.
       - Click `-` and `+` to set the mask id, and click `Add Mask` to add the mask.
       - Click `Save Mask` to save the mask.
-    ![mask_label_toolkit](./docs/resources/labeltoolkit.gif)
-- [Introduction_to_6D_Pose_Estimation](./docs/slides/05_Introduction_to_6D_Pose_Estimation.pdf)
-  Understand the basic concepts of 6D Object Pose Estimation and the FoundationPose.
-  - :white_check_mark: Setup the python environment for the FoundationPose, and run the demo code successfully.
-- [Introduction to the HaMeR](./docs/slides/06_HaMeR.pdf)
-  Understand how the HaMeR works and how to use it to estimate the hand shape and pose.
-  - :white_check_mark: Setup the python environment for the HaMeR, and run the demo code successfully.
-- HW4: Generate the 3D Handmarks by Trangulation and RANSAC
-  - Follow the steps in [Generate the 3D Handmarks by Trangulation and RANSAC](./notebooks/07_Generate_3D_Handmarks_by_RANSAC.ipynb) to generate the 3D handmarks.
+      - The mask and visualization images will be saved in the `./data/recordings/<sequence_name>/processed/segmentation/init_segmentation/<camera_serial>` folder.
+    - HW3: Generate one 3D hand joint by triangulation and RANSAC.
+      - Create the list of candidate 3D points by triangulation handmarks of each camera pair.
+      - Use RANSAC to find the best 3D hand joint.
+      - References:
+        - [Triangulation.ipynb](./notebooks/03-2_CV_Triangulation.ipynb)
+        - [RANSAC.ipynb](./notebooks/04_RANSAC_Algorithm.ipynb)
+        - [Generate_3D_Handmarks_by_RANSAC.ipynb](./notebooks/07_Generate_3D_Handmarks_by_RANSAC.ipynb)
 
-### Week 4: Data Processing
-1. Complete the `meta.json` for all the recordings, refer to HW2 of Week 2.
-2. Run **MediaPipe** Handmarks Detection on all the recordings, refer to HW2 of Week 3.
-3. Generate the 3D handmarks for all the recordings, refer to HW4 of Week 3.
-4. Label the initial object masks for all the recordings, refer to HW3 of Week 3.
-5. Generate the object masks for all the recordings by **XMem** by running `./tools/04_run_xmem_segmentation.py`.
-6. Run **HaMeR** to estimate the hand pose on our data.
-7. Run **FoundationPose** to estimate the object pose on our data.
+
+### Week 5: Data Processing (Hand & Object Pose Estimation)
+
+- **Tasks**
+  - :white_check_mark: Use the HaMeR to estimate the 2D handmarks in each camera view.
+    - Generate the input bounding box for the HaMeR.
+    - Run HaMeR model to estimate the 2D handmarks.
+  - :white_check_mark: Use the FoundationPose to estimate the object pose in each camera view.
+    - Setup the FoundationPose python environment.
+    - Write the `DataReader` to load the input data for the FoundationPose for our sequences.
+    - Run the FoundationPose model to estimate the object pose.
+  - :white_check_mark: Optimize the final MANO hand pose.
+    -  Generate 3D hand joints from handmarks of HaMeR.
+    -  Optimize the MANO hand pose to fit the 3D hand joints.
+  - :white_check_mark: Optimize the final Object Pose.
+    -  Generate the best 3D object pose from the FoundationPose results.
+    -  Optimize the object pose to fit the 3D inlier FD poses.
+   -  :white_check_mark: Generate the final 3D hand and object poses.
+      -  Generate the final hand and object poses from the optimized MANO hand pose and object pose.
+         -  The final MANO hand poses is save to `poses_m.npy` file under each sequence folder.
+         -  The final 6D object poses is save to `poses_o.npy` file under each sequence folder.
+   -  :white_check_mark: Visualization of the final poses
+      -  The rendered images are saved in the `./data/recordings/<sequence_name>/processed/sequence_rendering` folder. And 
+      - Tthe rendered video is saved to `vis_<sequence_name>.mp4` file under each sequence folder.
+
+- **Homeworks**
+  - HW1: Run FoundationPose Model on our sequences.
+    - Write the code to run FoundationPose on our dataset.
+    - References:
+      - Notebook: [Run_Foundation_Pose_for_Summer_Camp.ipynb](./notebooks/08_run_foundation_pose_for_summer_camp.ipynb)
+  - HW2: Run HaMeR Model on our sequences.
+    - Write the code to run HaMeR on our dataset.
+    - References:
+      - Notebook: [Run_HaMeR_for_Summer_Camp.ipynb](./notebooks/09_run_hamer_for_summer_camp.ipynb)
 
 ---
 
-## Data Collection
+## Processed Results
 
-1. Objects Used in the Dataset
-   - The dataset contains the following objects:
-     ![Object List](./docs/resources/objects_info.png)
-   - The object models are saved under the `./data/models` folder. You could use [Meshlab](https://www.meshlab.net/) to view the object models.
+<div style="display: flex; flex-direction: column; gap: 0;">
+  <div style="flex: 1 1 100%; max-width: 100%;">
+    <img src="./docs/resources/vis_ida_20240617_101133.gif" alt="vis_ida" style="width: 100%; margin: 0;">
+  </div>
+  <div style="flex: 1 1 100%; max-width: 100%;">
+    <img src="./docs/resources/vis_isaac_20240617_102035.gif" alt="vis_isaac" style="width: 100%; margin: 0;">
+  </div>
+  <div style="flex: 1 1 100%; max-width: 100%;">
+    <img src="./docs/resources/vis_lyndon_20240617_102549.gif" alt="vis_lyndon" style="width: 100%; margin: 0;">
+  </div>
+  <div style="flex: 1 1 100%; max-width: 100%;">
+    <img src="./docs/resources/vis_may_20240617_101936.gif" alt="vis_may" style="width: 100%; margin: 0;">
+  </div>
+  <div style="flex: 1 1 100%; max-width: 100%;">
+    <img src="./docs/resources/vis_nicole_20240617_102128.gif" alt="vis_nicole" style="width: 100%; margin: 0;">
+  </div>
+  <div style="flex: 1 1 100%; max-width: 100%;">
+    <img src="./docs/resources/vis_reanna_20240617_102436.gif" alt="vis_reanna" style="width: 100%; margin: 0;">
+  </div>
+  <div style="flex: 1 1 100%; max-width: 100%;">
+    <img src="./docs/resources/vis_rebecca_20240617_100917.gif" alt="vis_rebecca" style="width: 100%; margin: 0;">
+  </div>
+</div>
 
-2. Calibration Information
-   - Camera Intrinsics
-     The camera intrinsics files are saved under the `./data/calibration/intrinsics` folder.
-   - Camera Extrinsics
-     The camera extrinsics files are saved under the `./data/calibration/extrinsics` folder.
-   - MANO Hand Shapes
-     The MANO hand shapes are saved under the `./data/calibration/mano` folder.
-
-3. Rosbag Recordings
-
-   You coud download the rosbag recordings from the [Box](https://utdallas.box.com/s/inkzi3td9sfhe4efd9uso5orxolcv03g).
