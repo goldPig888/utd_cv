@@ -1,6 +1,6 @@
 # ROS Environment Setup on Local Desktop with Conda
 
-ref: [RoboStack Installation](https://robostack.github.io/GettingStarted.html).
+Refer to: [RoboStack Installation](https://robostack.github.io/GettingStarted.html) for complete instruction.
 
 # Install Miniconda if you haven't
 
