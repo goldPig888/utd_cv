@@ -31,6 +31,7 @@ This is the repository for the Summer Camp project. The project aims to estimate
 - [Recorded Rosbags](https://utdallas.box.com/s/inkzi3td9sfhe4efd9uso5orxolcv03g).
 - [Extracted Recordings](https://utdallas.box.com/s/8sczu67ufl2wuirk4c6lyssex2y125fc).
 - [Processed Results](https://utdallas.box.com/s/uge3jhx2livb9ns1mn5qe04w1j2dvsy3).
+- [Final Presentation](https://utdallas.box.com/s/goe9nzqq7q5g1wz2nzhrrb34vbtbmu7f).
 
 ## Environment Setup
 
