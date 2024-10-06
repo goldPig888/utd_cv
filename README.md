@@ -1,21 +1,20 @@
-# Summer Camp
-  
-  [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org/downloads/release/python-3100) [![ROS](https://img.shields.io/badge/ROS-Melodic-green.svg)](http://wiki.ros.org/melodic) [![Pytorch](https://img.shields.io/badge/Pytorch-2.1.1-orange.svg)](https://pytorch.org/) ![License](https://img.shields.io/badge/License-MIT-green.svg)
+# CAST-STEM 2024 Summer Camp Project
 
-This is the repository for the Summer Camp project. The project aims to estimate the hand and object poses from the recordings captured by the Multi-Camera System.
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB.svg)](https://www.python.org/downloads/release/python-3110) [![ROS](https://img.shields.io/badge/ROS-Melodic-22314E.svg)](http://wiki.ros.org/melodic) [![Pytorch](https://img.shields.io/badge/Pytorch-2.1.1-EE4C2C.svg)](https://pytorch.org/) ![License](https://img.shields.io/badge/License-GPLv3-4E9A06.svg) [![Website](https://img.shields.io/badge/Website-Visit-lightgrey.svg)](https://sites.google.com/view/016castbridge2024)
+
+This is the repository for the CAST-STEM 2024 Summer Camp project. The project aims to estimate hand and object poses from recordings captured by the Multi-Camera System. The project website can be found [here](https://sites.google.com/view/016castbridge2024).
 
 ---
 
 ## Contents
 
-- [Summer Camp](#summer-camp)
+- [CAST-STEM 2024 Summer Camp Project](#cast-stem-2024-summer-camp-project)
   - [Contents](#contents)
+  - [Project Instruction Video](#project-instruction-video)
   - [Download Links](#download-links)
+  - [License](#license)
+  - [Prerequisites](#prerequisites)
   - [Environment Setup](#environment-setup)
-    - [Install Git](#install-git)
-    - [Clone the Repository](#clone-the-repository)
-    - [Install the VSCode Editor](#install-the-vscode-editor)
-    - [Python Environment Setup](#python-environment-setup)
   - [Project Schedule](#project-schedule)
     - [Week 1: Introduction to the Basics](#week-1-introduction-to-the-basics)
     - [Week 2: Data Collection (Calibration)](#week-2-data-collection-calibration)
@@ -26,40 +25,56 @@ This is the repository for the Summer Camp project. The project aims to estimate
 
 ---
 
+![Poster](./docs/Poster_UTD-016.png)
+
+## Project Instruction Video
+
+[![Project Video](https://img.youtube.com/vi/SmFpKeULE0Q/0.jpg)](https://youtu.be/SmFpKeULE0Q)
+
+Click on the image to watch the project instruction video.
+
 ## Download Links
 
-- [Recorded Rosbags](https://utdallas.box.com/s/inkzi3td9sfhe4efd9uso5orxolcv03g).
-- [Extracted Recordings](https://utdallas.box.com/s/8sczu67ufl2wuirk4c6lyssex2y125fc).
 - [Processed Results](https://utdallas.box.com/s/uge3jhx2livb9ns1mn5qe04w1j2dvsy3).
 - [Final Presentation](https://utdallas.box.com/s/goe9nzqq7q5g1wz2nzhrrb34vbtbmu7f).
 
-## Environment Setup
+---
 
-  ### Install Git
+## License
 
-  - Linux
-    ```bash
-    sudo apt-get install git
-    ```
+This project is licensed under the GPL-3.0 License - see the [LICENSE](./LICENSE) file for details.
 
-  - Windows
+---
+
+## Prerequisites
+
+- Git
+
+  - For Linux:
+
+  ```bash
+  sudo apt-get install git
+  ```
+
+  - For Windows:
+
     - Option One: [Github Desktop](https://desktop.github.com/).
     - Option Two: [Git for Windows](https://gitforwindows.org/).
 
-  - MacOS
+  - For MacOS:
+
     - Option One: [Github Desktop](https://desktop.github.com/).
     - Option Two: [Homebrew](https://brew.sh/).
-      ```bash
-      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-      ```
-  
-  ### Clone the Repository
-  
-  ```bash
-  git clone --recursive https://github.com/gobanana520/summer_camp.git
-  ```
 
-  ### Install the VSCode Editor
+    ```bash
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    ```
+
+- Conda Environment Manager
+
+  Please refer to the official instruction [Installing Miniconda](https://docs.anaconda.com/miniconda/miniconda-install/) to install the miniconda.
+
+- Code Editor (Visual Studio Code for example)
 
   - You could install the Visual Studio Code (VSCode) from the [official website](https://code.visualstudio.com/).
   - Once you have installed the VSCode, you could install below extensions:
@@ -67,21 +82,44 @@ This is the repository for the Summer Camp project. The project aims to estimate
     - [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance)
     - [Python Debugger](https://marketplace.visualstudio.com/items?itemName=ms-python.debugpy)
     - [Jupyter](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter)
-    - [Black Formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter)
 
+## Environment Setup
 
-  
+1. Create the Conda Environment
 
-  ### Python Environment Setup
+```bash
+conda create --name summer_camp python=3.11
+conda activate summer_camp
+```
 
-  - Follow steps in the [Python Environment Setup](./docs/Python_Environment_Setup.md) document to setup your Python environment.
+2. Clone the Repository
 
-  - If you plan to run the ROS locally, you could follow the [ROS Environment Setup](./docs/ROS_Environment_Setup.md) document to setup the ROS environment with conda. Then you could run the command `roscore` to start the ROS master, and debug your code under the ROS environment.
+```bash
+git clone --recursive https://github.com/gobanana520/CAST-STEM-2024.git
+cd CAST-STEM-2024
+```
+
+3. Install Dependencies
+
+- For Linux & Windows
+
+```bash
+python -m pip install --no-cache-dir -r requirements.txt
+```
+
+- For MacOS
+
+```bash
+python -m pip install --no-cache-dir -r requirements_macos.txt
+```
+
+4. ROS Environment Setup [Optional]
+
+If you plan to run the ROS locally, refer to the [ROS Environment Setup](./docs/ROS_Environment_Setup.md) document for detailed steps. You can then run `roscore` to start the ROS master and debug your code under the ROS environment.
 
 ---
 
 ## Project Schedule
-
 
 ### Week 1: Introduction to the Basics
 
@@ -127,24 +165,26 @@ This is the repository for the Summer Camp project. The project aims to estimate
     - Image Segmentation: [Segment Anything](https://github.com/facebookresearch/segment-anything)
     - Video Object Segmentation: [XMem](https://hkchengrex.com/XMem)
   - Related Papers (Optional)
-    - [SMPL Body Model](./docs/papers/SMPL.pdf)
-    - [SMPL-H Body Model](./docs/papers/SMPL-H.pdf)
-    - [SMPL-X Body Model](./docs/papers/SMPL-X.pdf)
-    - [HaMeR](./docs/papers/HaMeR.pdf)
-    - [FoundationPose](./docs/papers/FoundationPose.pdf)
-    - [XMem](./docs/papers/XMem.pdf)
-    - [Segment Anything](./docs/papers/SegmentAnything.pdf)
-
+    - [SMPL Body Model](https://files.is.tue.mpg.de/black/papers/SMPL2015.pdf)
+    - [SMPL-H Body Model](https://arxiv.org/abs/2201.02610)
+    - [SMPL-X Body Model](https://arxiv.org/abs/1904.05866)
+    - [HaMeR](https://arxiv.org/abs/2312.05251)
+    - [FoundationPose](https://arxiv.org/abs/2312.08344)
+    - [XMem](https://arxiv.org/abs/2207.07115)
+    - [Segment Anything](https://arxiv.org/abs/2304.02643)
 
 ### Week 2: Data Collection (Calibration)
 
 - **Tasks**
+
   - :white_check_mark: Camera Intrinsics Extraction
+
     - The camera intrinsics are saved under the `./data/calibration/intrinsics/<camera_serial>_640x480.json` file.
 
   - :white_check_mark: Camera Extrinsics Calibration
+
     - We use a large calibration board to calibrate the camera extrinsics in pairs. Below is the usage demo of the tool [Vicalib](https://github.com/arpg/vicalib):
-    ![camera_calibration](./docs/resources/camera_calibration_vicalib.gif)
+      ![camera_calibration](./docs/resources/camera_calibration_vicalib.gif)
     - The camera extrinsics are saved under the `./data/calibration/extrinsics/extrinsics_<data>/extrinsics.json` file.
 
   - :white_check_mark: Hand Shape Calibration.
@@ -158,11 +198,13 @@ This is the repository for the Summer Camp project. The project aims to estimate
 ### Week 3: Data Collection (Continued)
 
 - **Objects Used in the Dataset**
+
   - The dataset contains the following objects:
     ![Object List](./docs/resources/objects_info.png)
   - The object models are saved under the `./data/models` folder. You could use [Meshlab](https://www.meshlab.net/) to view the object models.
 
 - **Tasks**
+
   - :white_check_mark: Collect the data with the Multi-Camera System.
     - Each person will pick one object.
     - Use single / two hands to manipulate the object.
@@ -171,7 +213,7 @@ This is the repository for the Summer Camp project. The project aims to estimate
 
 - **Homeworks**
   - HW1: Rosbag Extraction
-    - Write the class `RosbagExtractor` 
+    - Write the class `RosbagExtractor`
       - to extract the images from the rosbag recordings for all the camera image topics.
     - the extracted images should be saved in the `./data/recordings/<person_id>_<rosbag_name>` folder following below structure
       ```
@@ -179,7 +221,7 @@ This is the repository for the Summer Camp project. The project aims to estimate
       ├── 037522251142          # the camera serial number
       │   ├── color_000000.jpg  # the color image color_xxxxxx.jpg
       │   └── depth_000000.png  # the depth image depth_xxxxxx.png
-      │   └── ...  
+      │   └── ...
       ├── 043422252387
       │   ├── color_000000.jpg
       │   ├── depth_000000.png
@@ -193,49 +235,46 @@ This is the repository for the Summer Camp project. The project aims to estimate
     - References:
       - [Export image from rosbag](https://gist.github.com/zxf8665905/2d09d25da823b0f7390cab83c64d631a)
   - HW2: Metadata Generation
-    - For each extracted recording, the metadata should be generated under the sequence folder with filename `meta.json`. 
+    - For each extracted recording, the metadata should be generated under the sequence folder with filename `meta.json`.
     - The `object_id` (G01_1,...,G31_4) could be found in the [Week 3](#week-3-data-collection-continued) section.
     - Below is an example of the `meta.json` file:
       ```json
       {
-          // the camera serial numbers
-          "serials": [
-              "037522251142",
-              "043422252387",
-              "046122250168",
-              "105322251225",
-              "105322251564",
-              "108222250342",
-              "115422250549",
-              "117222250549"
-          ],
-          // the image width
-          "width": 640,
-          // the image height
-          "height": 480,
-          // the extrinsics folder name
-          "extrinsics": "extrinsics_20240611",
-          // the person name
-          "mano_calib": "john",
-          // the object id
-          "object_ids": "G31_4",
-          // the hand sides in the recording 
-          // (if both hands are used, the order should be right first and then left)
-          "mano_sides": [
-              "right",
-              "left"
-          ],
-          // the number of frames in the recording
-          "num_frames": 1024
+        // the camera serial numbers
+        "serials": [
+          "037522251142",
+          "043422252387",
+          "046122250168",
+          "105322251225",
+          "105322251564",
+          "108222250342",
+          "115422250549",
+          "117222250549"
+        ],
+        // the image width
+        "width": 640,
+        // the image height
+        "height": 480,
+        // the extrinsics folder name
+        "extrinsics": "extrinsics_20240611",
+        // the person name
+        "mano_calib": "john",
+        // the object id
+        "object_ids": "G31_4",
+        // the hand sides in the recording
+        // (if both hands are used, the order should be right first and then left)
+        "mano_sides": ["right", "left"],
+        // the number of frames in the recording
+        "num_frames": 1024
       }
       ```
-
 
 ### Week 4: Data Processing (Handmarks & Object Masks)
 
 - **Slides**
+
   - [Introduction_to 6D Pose Estimation.pdf](./docs/slides/05_Introduction_to_6D_Pose_Estimation.pdf)
-    - Understand what's 6D Object Pose Estimation. 
+    - Understand what's 6D Object Pose Estimation.
     - Understand the pipeline of FoundationPose.
       ![foundationpose_pipeline](./docs/resources/fdpose_pipeline.png)
   - [Introduction to the HaMeR.pdf](./docs/slides/06_HaMeR.pdf)
@@ -244,6 +283,7 @@ This is the repository for the Summer Camp project. The project aims to estimate
       ![hamer_pipeline](./docs/resources/hamer_pipeline.png)
 
 - **Tasks**
+
   - :white_check_mark: Handmarks Detection by MediaPipe
   - :white_check_mark: Label the initial Object Mask mannually.
   - :white_check_mark: Use XMem to generate the remaining masks for all the recordings.
@@ -295,10 +335,10 @@ This is the repository for the Summer Camp project. The project aims to estimate
         - [RANSAC.ipynb](./notebooks/04_RANSAC_Algorithm.ipynb)
         - [Generate_3D_Handmarks_by_RANSAC.ipynb](./notebooks/07_Generate_3D_Handmarks_by_RANSAC.ipynb)
 
-
 ### Week 5: Data Processing (Hand & Object Pose Estimation)
 
 - **Tasks**
+
   - :white_check_mark: Use the HaMeR to estimate the 2D handmarks in each camera view.
     - Generate the input bounding box for the HaMeR.
     - Run HaMeR model to estimate the 2D handmarks.
@@ -307,18 +347,18 @@ This is the repository for the Summer Camp project. The project aims to estimate
     - Write the `DataReader` to load the input data for the FoundationPose for our sequences.
     - Run the FoundationPose model to estimate the object pose.
   - :white_check_mark: Optimize the final MANO hand pose.
-    -  Generate 3D hand joints from handmarks of HaMeR.
-    -  Optimize the MANO hand pose to fit the 3D hand joints.
+    - Generate 3D hand joints from handmarks of HaMeR.
+    - Optimize the MANO hand pose to fit the 3D hand joints.
   - :white_check_mark: Optimize the final Object Pose.
-    -  Generate the best 3D object pose from the FoundationPose results.
-    -  Optimize the object pose to fit the 3D inlier FD poses.
-   -  :white_check_mark: Generate the final 3D hand and object poses.
-      -  Generate the final hand and object poses from the optimized MANO hand pose and object pose.
-         -  The final MANO hand poses is save to `poses_m.npy` file under each sequence folder.
-         -  The final 6D object poses is save to `poses_o.npy` file under each sequence folder.
-   -  :white_check_mark: Visualization of the final poses
-      -  The rendered images are saved in the `./data/recordings/<sequence_name>/processed/sequence_rendering` folder. And 
-      - Tthe rendered video is saved to `vis_<sequence_name>.mp4` file under each sequence folder.
+    - Generate the best 3D object pose from the FoundationPose results.
+    - Optimize the object pose to fit the 3D inlier FD poses.
+  - :white_check_mark: Generate the final 3D hand and object poses.
+    - Generate the final hand and object poses from the optimized MANO hand pose and object pose.
+      - The final MANO hand poses is save to `poses_m.npy` file under each sequence folder.
+      - The final 6D object poses is save to `poses_o.npy` file under each sequence folder.
+  - :white_check_mark: Visualization of the final poses
+    - The rendered images are saved in the `./data/recordings/<sequence_name>/processed/sequence_rendering` folder. And
+    - Tthe rendered video is saved to `vis_<sequence_name>.mp4` file under each sequence folder.
 
 - **Homeworks**
   - HW1: Run FoundationPose Model on our sequences.
@@ -333,6 +373,8 @@ This is the repository for the Summer Camp project. The project aims to estimate
 ---
 
 ## Processed Results
+
+Videos demonstrating the final processed results of the project can be found below:
 
 <div style="display: flex; flex-direction: column; gap: 0;">
   <div style="flex: 1 1 100%; max-width: 100%;">
@@ -357,4 +399,3 @@ This is the repository for the Summer Camp project. The project aims to estimate
     <img src="./docs/resources/vis_rebecca_20240617_100917.gif" alt="vis_rebecca" style="width: 100%; margin: 0;">
   </div>
 </div>
-
